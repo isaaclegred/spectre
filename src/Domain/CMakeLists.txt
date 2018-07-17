@@ -31,15 +31,7 @@ add_library(${LIBRARY} ${LIBRARY_SOURCES})
 
 target_link_libraries(
   ${LIBRARY}
-<<<<<<< HEAD
 
   INTERFACE CoordinateMaps
   INTERFACE DataStructures
-||||||| merged common ancestors
-  INTERFACE ErrorHandling
-  INTERFACE Spectral
-=======
-  INTERFACE CoordinateMaps
-  INTERFACE DataStructures
->>>>>>> 025bdb645fa4b63cdb2578e4d45efdfef90c239a
   )
