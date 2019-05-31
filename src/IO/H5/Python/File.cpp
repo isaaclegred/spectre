@@ -17,6 +17,7 @@
 #include "IO/H5/OpenGroup.hpp"
 #include "IO/H5/Type.hpp"
 #include "IO/H5/Version.hpp"
+#include "IO/H5/VolumeData.hpp"
 #include "PythonBindings/VectorPyList.hpp"
 
 namespace bp = boost::python;
@@ -32,25 +33,37 @@ void bind_h5file() {
            })
       .def("get_dat",
            +[](const h5::H5File<h5::AccessType::ReadWrite>& f,
-               const bp::str& path) -> const h5::Dat& {
-             const auto& dat_file =
-                 f.get<h5::Dat>(bp::extract<std::string>(path));
+               const std::string& path) -> const h5::Dat& {
+             const auto& dat_file = f.get<h5::Dat>(path);
              return dat_file;
            },
            bp::return_value_policy<bp::reference_existing_object>())
       .def("insert_dat",
-           +[](h5::H5File<h5::AccessType::ReadWrite>& f, const bp::str& path,
+           +[](h5::H5File<h5::AccessType::ReadWrite>& f, const std::string path,
                const bp::list& legend, uint32_t version) {
-             f.insert<h5::Dat>(bp::extract<std::string>(path),
-                               py_list_to_std_vector<std::string>(legend),
+             f.insert<h5::Dat>(path, py_list_to_std_vector<std::string>(legend),
                                version);
            })
+
       .def("close",
            +[](const h5::H5File<h5::AccessType::ReadWrite>& f) {
              f.close_current_object();
            })
-      .def("groups", +[](h5::H5File<h5::AccessType::ReadWrite>& f) {
-        return std_vector_to_py_list<std::string>(f.groups());
-      });
+      .def("groups",
+           +[](h5::H5File<h5::AccessType::ReadWrite>& f) {
+             return std_vector_to_py_list<std::string>(f.groups());
+           })
+
+      .def("get_vol",
+           +[](const h5::H5File<h5::AccessType::ReadWrite>& f,
+               const std::string path) -> const h5::VolumeData& {
+             const auto& vol_file = f.get<h5::VolumeData>(path);
+             return vol_file;
+           },
+           bp::return_value_policy<bp::reference_existing_object>())
+
+      .def("insert_vol",
+           +[](h5::H5File<h5::AccessType::ReadWrite>& f, const std::string path,
+               uint32_t version) { f.insert<h5::VolumeData>(path, version); });
 }
 }  // namespace py_bindings

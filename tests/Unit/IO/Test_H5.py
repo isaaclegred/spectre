@@ -39,7 +39,7 @@ class TestIOH5File(unittest.TestCase):
         file_spec.close()
 
     # Test whether data can be added to the dat file correctly
-    def test_append(self):
+    def test_dat_append(self):
         file_spec = spectre_h5.H5File(self.file_name, 1)
         file_spec.insert_dat("/element_data", ["Time", "Value"], 0)
         datfile = file_spec.get_dat("/element_data")
@@ -49,7 +49,7 @@ class TestIOH5File(unittest.TestCase):
         file_spec.close()
 
     # More complicated test case for getting data subsets and dimensions
-    def test_get_data_subset(self):
+    def test_dat_get_data_subset(self):
         file_spec = spectre_h5.H5File(self.file_name, 1)
         file_spec.insert_dat("/element_data", ["Time", "Value"], 0)
         datfile = file_spec.get_dat("/element_data")
@@ -62,7 +62,7 @@ class TestIOH5File(unittest.TestCase):
         file_spec.close()
 
     # Getting Attributes
-    def test_get_legend(self):
+    def test_dat_get_legend(self):
         file_spec = spectre_h5.H5File(self.file_name, 1)
         file_spec.insert_dat("/element_data", ["Time", "Value"], 0)
         datfile = file_spec.get_dat("/element_data")
@@ -71,23 +71,40 @@ class TestIOH5File(unittest.TestCase):
         file_spec.close()
 
     # The header is not universal, just checking the part that is predictable
-    def test_get_header(self):
+    def test_dat_get_header(self):
         file_spec = spectre_h5.H5File(self.file_name, 1)
         file_spec.insert_dat("/element_data", ["Time", "Value"], 0)
         datfile = file_spec.get_dat("/element_data")
         self.assertEqual(datfile.get_header()[0:16], "#\n# File created")
         file_spec.close()
 
+    # Testing the VolumeData File wrappers.
+    def test_insert_vol(self):
+        file_spec = spectre_h5.H5File(self.file_name, 1)
+        file_spec.insert_vol("/element_data", 0)
+        volfile = file_spec.get_vol("/element_data")
+        self.assertEqual(volfile.get_version(), 0)
+        file_spec.close()
+
+    def test_vol_get_header(self):
+        file_spec = spectre_h5.H5File(self.file_name, 1)
+        file_spec.insert_vol("/element_data", 0)
+        volfile = file_spec.get_vol("/element_data")
+        print(volfile.get_header()[0:20])
+        self.assertEqual(volfile.get_header()[0:20], "#\n# File created on " )
+
+
     def test_groups(self):
         file_spec = spectre_h5.H5File(self.file_name, 1)
         file_spec.insert_dat("/element_data", ["Time", "Value"], 0)
         file_spec.insert_dat("/element_position", ["x", "y", "z"], 0)
-        file_spec.insert_dat("/element_size", ["Time", "Size"], 0)
+        file_spec.insert_vol("/element_size", 0)
         groups_spec = ["element_data.dat", "element_position.dat",
-                       "element_size.dat", "src.tar.gz"]
+                       "element_size.vol", "src.tar.gz"]
         for group_name in groups_spec:
-            self.assertTrue(group_name in file_spec.groups())
+            assert(group_name in file_spec.groups())
         file_spec.close()
+
 
 
 if __name__ == '__main__':
