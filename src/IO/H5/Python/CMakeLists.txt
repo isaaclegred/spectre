@@ -9,6 +9,7 @@ spectre_python_add_module(
   Bindings.cpp
   Dat.cpp
   File.cpp
+  VolumeData.cpp
   MODULE_PATH "IO/"
   )
 

@@ -42,6 +42,7 @@ void CmiError(const char* fmt, ...) {
 
 int CmiMyPe() { return 0; }
 int _Cmi_mynode = 0;
+std::string info_from_build() { return "build_info"; }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-noreturn"
 void CmiAbort(const char* msg) {
