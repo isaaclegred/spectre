@@ -7,6 +7,12 @@ configure_file(
   ${CMAKE_SOURCE_DIR}/src/Informer/InfoFromBuild.cpp
   ${CMAKE_BINARY_DIR}/Informer/InfoFromBuild.cpp
   )
+# Configure info from build to give access to unit test path,
+# SpECTRE version, etc. (things known at CMake time)
+configure_file(
+  ${CMAKE_SOURCE_DIR}/src/Informer/MakeTimeInfoFromBuild.cpp
+  ${CMAKE_BINARY_DIR}/Informer/MakeTimeInfoFromBuild.cpp
+  )
 
 # APPLE instead of ${APPLE} is intentional
 if (NOT APPLE)
