@@ -7,7 +7,7 @@ spectre_python_add_module(
   Informer
   SOURCES
   Bindings.cpp
-  InfoFromBuild.cpp
+  MakeTimeInfoFromBuild.cpp
 )
 
 target_link_libraries(
