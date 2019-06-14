@@ -60,7 +60,7 @@ def generate_xdmf(file_prefix, output_filename, start_time, stop_time, stride):
                 element_path = "          %s:/element_data.vol/%s/%s" % (
                     h5file[1], id_and_value[0], grid)
                 xdmf_output += \
-                    "    <Grid Name=\"%s\" GrideType=\"Uniform\">\n" % (grid)
+                    "    <Grid Name=\"%s\" GridType=\"Uniform\">\n" % (grid)
                 # Write topology information
                 xdmf_output += "      <Topology TopologyType=\"Hexahedron\" " \
                     "NumberOfElements=\"%d\">\n" % (number_of_cells)

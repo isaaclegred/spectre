@@ -58,15 +58,15 @@ def generate_xdmf(file_prefix, output_filename, start_time, stop_time, stride):
                 for x in extents:
                     number_of_cells *= (x - 1)
                 data_item = "        <DataItem Dimensions=\"%d %d %d\" " \
-                    "NumberType=\"Double\" Precision=\"8\" Format=\"HDF5\">\n" \
+                    "NumberType=\"Double\" Precision=\"8\" Format=\"HDF5\">\n"\
                     % (extents[0], extents[1], extents[2])
-                data_item_vec = "        <DataItem Dimensions=\"%d %d %d 3\" " \
+                data_item_vec = "        <DataItem Dimensions=\"%d %d %d 3\" "\
                 "ItemType = \"Function\" Function = \"JOIN($0,$1,$2)\">\n" \
                     % (extents[0], extents[1], extents[2])
-                element_path = "          %s:/element_data.vol/" %(h5file[1]) +\
+                element_path = "          %s:/element_data.vol/" %(h5file[1]) +
                 "ObservationId%s/%s" % (id_and_value[0], grid)
                 xdmf_output += \
-                    "    <Grid Name=\"%s\" GrideType=\"Uniform\">\n" % (grid)
+                    "    <Grid Name=\"%s\" GridType=\"Uniform\">\n" % (grid)
                 # Write topology information
                 xdmf_output += "      <Topology TopologyType=\"Hexahedron\" " \
                     "NumberOfElements=\"%d\">\n" % (number_of_cells)
