@@ -12,8 +12,8 @@
 #include "DataStructures/Index.hpp"
 #include "DataStructures/Tensor/TensorData.hpp"
 #include "IO/H5/AccessType.hpp"
-#include "IO/H5/File.hpp"
 #include "IO/H5/VolumeData.hpp"
+#include "IO/H5/File.hpp"
 #include "IO/Observer/ArrayComponentId.hpp"
 #include "IO/Observer/ObservationId.hpp"
 #include "IO/Observer/ObserverComponent.hpp"
@@ -74,8 +74,8 @@ struct ContributeVolumeData {
         make_not_null(&box),
         [
           &cache, &observation_id, &array_component_id, &received_extents,
-          received_tensor_data = std::move(in_received_tensor_data), &
-          subfile_name
+          received_tensor_data = std::move(in_received_tensor_data),
+          &subfile_name
         ](const gsl::not_null<db::item_type<Tags::TensorData>*> volume_data,
           const std::unordered_set<ArrayComponentId>&
               volume_component_ids) mutable noexcept {
@@ -142,11 +142,12 @@ struct ContributeVolumeDataToWriter {
     // This is the number of callers that have registered (that are associated
     // with the observation type of this observation_id).
     // We expect that this Action will be called once by each of them.
-    const auto expected_number_of_calls = [&box, &observation_id]() noexcept {
+    const auto expected_number_of_calls = [&box, &observation_id ]() noexcept {
       const auto hash = observation_id.observation_type_hash();
       const auto& registered = db::get<Tags::VolumeObserversRegistered>(box);
       return (registered.count(hash) == 1) ? registered.at(hash).size() : 0;
-    }();
+    }
+    ();
     db::mutate<Tags::TensorData, Tags::VolumeObserversContributed>(
         make_not_null(&box),
         [
@@ -174,7 +175,8 @@ struct ContributeVolumeDataToWriter {
           // group. If so we write to disk.
           if (volume_observers_contributed->at(observation_id) ==
               expected_number_of_calls) {
-            Parallel::threaded_action<ThreadedActions::WriteVolumeData>(
+            Parallel::threaded_action<
+                ThreadedActions::WriteVolumeData>(
                 Parallel::get_parallel_component<ObserverWriter<Metavariables>>(
                     cache)[static_cast<size_t>(Parallel::my_node())],
                 observation_id, subfile_name);
@@ -231,13 +233,16 @@ struct WriteVolumeData {
       h5::H5File<h5::AccessType::ReadWrite> h5file(
           file_prefix + std::to_string(Parallel::my_node()) + ".h5", true);
       constexpr size_t version_number = 0;
-      auto& volume_file =
-          h5file.try_insert<h5::VolumeData>(subfile_name, version_number);
-      for (const auto& id_and_tensor_data_for_grid : volume_data) {
-        const auto& extents_and_tensors = id_and_tensor_data_for_grid.second;
-        volume_file.insert_tensor_data(
-            observation_id.hash(), observation_id.value(), extents_and_tensors);
+      auto& volume_file = h5file.try_insert<h5::VolumeData>(
+          subfile_name, version_number);
+      std::vector<ExtentsAndTensorVolumeData> dg_elements;
+      dg_elements.reserve(volume_data.size());
+      for (auto id_and_element : volume_data) {
+        dg_elements.push_back(id_and_element.second);
       }
+      // Write the data to the file
+      volume_file.write_volume_data(observation_id.hash(),
+                                    observation_id.value(), dg_elements);
     }
     Parallel::unlock(&file_lock);
   }
