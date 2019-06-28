@@ -12,6 +12,7 @@
 
 #include "IO/H5/Dat.hpp"
 #include "IO/H5/File.hpp"
+#include "IO/H5/VolumeData.hpp"
 #include "IO/H5/Header.hpp"
 #include "IO/H5/Helpers.hpp"
 #include "IO/H5/OpenGroup.hpp"
@@ -51,6 +52,19 @@ void bind_h5file() {
            })
       .def("groups", +[](h5::H5File<h5::AccessType::ReadWrite>& f) {
         return std_vector_to_py_list<std::string>(f.groups());
-      });
+      })
+
+    .def("get_vol",
+         +[](const h5::H5File<h5::AccessType::ReadWrite>& f,
+             const std::string path) {
+           const auto& vol_file = f.get<h5::VolumeData>(path);
+             return &vol_file;
+         },
+         bp::return_value_policy<bp::reference_existing_object>())
+
+    .def("insert_vol",
+         +[](h5::H5File<h5::AccessType::ReadWrite>& f, const std::string path,
+             uint32_t version) {
+           f.insert<h5::VolumeData>(path, version); });
 }
 }  // namespace py_bindings
