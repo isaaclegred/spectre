@@ -67,4 +67,5 @@ spectre_run_cmake() {
           -D CMAKE_CXX_LINK_FLAGS=-lstdc++ \
           "$@" \
           $SPECTRE_HOME
+
 }

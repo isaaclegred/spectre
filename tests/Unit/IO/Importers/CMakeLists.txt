@@ -8,7 +8,6 @@ set(LIBRARY_SOURCES
   Test_Tags.cpp
   Test_VolumeDataReaderActions.cpp
   )
-
 add_test_library(
   ${LIBRARY}
   "IO/Importers"

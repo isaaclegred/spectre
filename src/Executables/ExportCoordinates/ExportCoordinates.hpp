@@ -108,8 +108,9 @@ struct ExportCoordinates {
         observers::ArrayComponentId(
             std::add_pointer_t<ParallelComponent>{nullptr},
             Parallel::ArrayIndex<ElementId<Dim>>(array_index)),
-        std::move(components), mesh.extents());
+        std::move(components), mesh.extents(), mesh.basis(), mesh.quadrature());
     return std::forward_as_tuple(std::move(box));
+
   }
 };
 }  // namespace Actions

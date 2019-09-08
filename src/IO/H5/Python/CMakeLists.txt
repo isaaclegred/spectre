@@ -19,6 +19,7 @@ spectre_python_link_libraries(
   PRIVATE
   IO
   DataStructures
+  Informer
   )
 
 spectre_python_add_dependencies(

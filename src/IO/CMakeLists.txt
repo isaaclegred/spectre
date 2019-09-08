@@ -31,6 +31,7 @@ target_link_libraries(
   Hdf5
   Options
   Utilities
+  Spectral
   )
 
 add_subdirectory(H5/Python)
