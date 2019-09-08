@@ -149,7 +149,7 @@ struct Observe {
         observers::ArrayComponentId(
             std::add_pointer_t<ParallelComponent>{nullptr},
             Parallel::ArrayIndex<ElementIndex<Dim>>(array_index)),
-        std::move(components), mesh.extents());
+        std::move(components), mesh.extents(), mesh.basis(), mesh.quadrature());
 
     // Send data to reduction observer
     Parallel::simple_action<observers::Actions::ContributeReductionData>(

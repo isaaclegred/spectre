@@ -10,7 +10,8 @@
 #include <vector>
 
 #include "DataStructures/DataVector.hpp"
-
+// Could I forward Declare instead?
+#include "NumericalAlgorithms/Spectral/Spectral.hpp"
 /// \cond
 namespace PUP {
 class er;
@@ -60,4 +61,22 @@ struct ExtentsAndTensorVolumeData {
   void pup(PUP::er& p) noexcept;  // NOLINT
   std::vector<size_t> extents{};
   std::vector<TensorComponent> tensor_components{};
+};
+
+// We need a datastructure to store the quadrature and the spectral basis as it
+// is passed to the volume writer.
+struct ElementVolumeData : ExtentsAndTensorVolumeData {
+  ElementVolumeData() = default;
+  ElementVolumeData(std::vector<size_t> extents,
+                    std::vector<TensorComponent> components,
+                    std::vector <Spectral::Basis> basis,
+                    std::vector<Spectral::Quadrature> quadrature) noexcept
+  : extents(std::move(extents)), tensor_components(std::move(components)),
+    basis(std::move(basis)), quadrature(std::move(quadrature)) {}
+  void pup(PUP::er& p) noexcept;
+  std::vector<size_t> extents{};
+  std::vector<TensorComponent> tensor_components{};
+  std::vector<Spectral::Basis> basis{};
+  std::vector<Spectral::Quadrature> quadrature{};
+
 };
