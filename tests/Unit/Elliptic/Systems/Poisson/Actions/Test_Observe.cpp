@@ -258,7 +258,15 @@ SPECTRE_TEST_CASE("Unit.Elliptic.Systems.Poisson.Actions.Observe",
     // The grids are probably the element ids, but we also don't care about
     // that. But there should be one grid per element.
     CHECK(grid_names.size() == 3);
-
+    CHECK(volume_data_group.get_bases(observation_id) ==
+          std::vector<std::vector<std::string>>{{"Legendre", "Legendre"},
+                                                {"Legendre", "Legendre"},
+                                                {"Legendre", "Legendre"}});
+    CHECK(volume_data_group.get_quadratures(observation_id) ==
+          std::vector<std::vector<std::string>>{
+              {"GaussLobatto", "GaussLobatto"},
+              {"GaussLobatto", "GaussLobatto"},
+              {"GaussLobatto", "GaussLobatto"}});
     CHECK(volume_data_group.get_extents(observation_id) ==
           std::vector<std::vector<size_t>>{{3, 2}, {3, 2}, {3, 2}});
     const std::vector<std::string> expected_components{

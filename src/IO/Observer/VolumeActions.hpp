@@ -15,6 +15,7 @@
 #include "IO/H5/File.hpp"
 #include "IO/H5/VolumeData.hpp"
 #include "IO/Observer/ArrayComponentId.hpp"
+#include "IO/Observer/Helpers.hpp"
 #include "IO/Observer/ObservationId.hpp"
 #include "IO/Observer/ObserverComponent.hpp"
 #include "IO/Observer/Tags.hpp"
@@ -23,6 +24,7 @@
 #include "Parallel/Info.hpp"
 #include "Parallel/Invoke.hpp"
 #include "Utilities/Algorithm.hpp"
+#include "Utilities/MakeString.hpp"
 #include "Utilities/Requires.hpp"
 #include "Utilities/TMPL.hpp"
 #include "Utilities/TaggedTuple.hpp"
@@ -69,11 +71,15 @@ struct ContributeVolumeData {
                     const std::string& subfile_name,
                     const observers::ArrayComponentId& array_component_id,
                     std::vector<TensorComponent>&& in_received_tensor_data,
-                    const Index<Dim>& received_extents) noexcept {
+                    const Index<Dim>& received_extents,
+                    const std::array<Spectral::Basis, Dim>& received_basis,
+                    const std::array<Spectral::Quadrature, Dim>&
+                        received_quadrature) noexcept {
     db::mutate<Tags::TensorData>(
         make_not_null(&box),
         [
           &cache, &observation_id, &array_component_id, &received_extents,
+          &received_basis, &received_quadrature,
           received_tensor_data = std::move(in_received_tensor_data),
           &subfile_name
         ](const gsl::not_null<db::item_type<Tags::TensorData>*> volume_data,
@@ -83,11 +89,18 @@ struct ContributeVolumeData {
               volume_data->at(observation_id).count(array_component_id) == 0) {
             std::vector<size_t> extents(received_extents.begin(),
                                         received_extents.end());
+            std::vector<Spectral::Basis> bases(received_basis.begin(),
+                                               received_basis.end());
+            std::vector<Spectral::Quadrature> quadratures(
+                received_quadrature.begin(), received_quadrature.end());
+
             volume_data->operator[](observation_id)
-                .emplace(
-                    array_component_id,
-                    ExtentsAndTensorVolumeData(
-                        std::move(extents), std::move(received_tensor_data)));
+                .emplace(array_component_id,
+                         ElementVolumeData(std::move(extents),
+                                           std::move(received_tensor_data),
+                                           std::move(bases),
+                                           std::move(quadratures)));
+
           } else {
             auto& current_data =
                 volume_data->at(observation_id).at(array_component_id);
@@ -131,14 +144,14 @@ struct ContributeVolumeDataToWriter {
                      tmpl::list_contains_v<DbTagsList,
                                            Tags::VolumeObserversContributed>> =
                 nullptr>
-  static void apply(db::DataBox<DbTagsList>& box,
-                    Parallel::ConstGlobalCache<Metavariables>& cache,
-                    const ArrayIndex& /*array_index*/,
-                    const observers::ObservationId& observation_id,
-                    const std::string& subfile_name,
-                    std::unordered_map<observers::ArrayComponentId,
-                                       ExtentsAndTensorVolumeData>&&
-                        in_volume_data) noexcept {
+  static void apply(
+      db::DataBox<DbTagsList>& box,
+      Parallel::ConstGlobalCache<Metavariables>& cache,
+      const ArrayIndex& /*array_index*/,
+      const observers::ObservationId& observation_id,
+      const std::string& subfile_name,
+      std::unordered_map<observers::ArrayComponentId, ElementVolumeData>&&
+          in_volume_data) noexcept {
     // This is the number of callers that have registered (that are associated
     // with the observation type of this observation_id).
     // We expect that this Action will be called once by each of them.
@@ -153,10 +166,10 @@ struct ContributeVolumeDataToWriter {
         [
           &cache, &expected_number_of_calls, &observation_id,
           in_volume_data = std::move(in_volume_data), &subfile_name
-        ](const gsl::not_null<std::unordered_map<
-              observers::ObservationId,
-              std::unordered_map<observers::ArrayComponentId,
-                                 ExtentsAndTensorVolumeData>>*>
+        ](const gsl::not_null<
+              std::unordered_map<observers::ObservationId,
+                                 std::unordered_map<observers::ArrayComponentId,
+                                                    ElementVolumeData>>*>
               volume_data,
           const gsl::not_null<
               std::unordered_map<observers::ObservationId, size_t>*>
@@ -205,7 +218,7 @@ struct WriteVolumeData {
                     const std::string& subfile_name) noexcept {
     // Get data from the DataBox in a thread-safe manner
     Parallel::lock(node_lock);
-    std::unordered_map<observers::ArrayComponentId, ExtentsAndTensorVolumeData>
+    std::unordered_map<observers::ArrayComponentId, ElementVolumeData>
         volume_data{};
     CmiNodeLock file_lock;
     db::mutate<Tags::H5FileLock, Tags::TensorData>(
@@ -233,7 +246,7 @@ struct WriteVolumeData {
       constexpr size_t version_number = 0;
       auto& volume_file =
           h5file.try_insert<h5::VolumeData>(subfile_name, version_number);
-      std::vector<ExtentsAndTensorVolumeData> dg_elements;
+      std::vector<ElementVolumeData> dg_elements;
       dg_elements.reserve(volume_data.size());
       for (auto id_and_element : volume_data) {
         dg_elements.push_back(id_and_element.second);

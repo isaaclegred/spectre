@@ -12,7 +12,7 @@ add_test_library(
   ${LIBRARY}
   "ParallelAlgorithms/Events/"
   "${LIBRARY_SOURCES}"
-  "DataStructures;Domain;ErrorHandling;Time;Utilities"
+  "DataStructures;Domain;ErrorHandling;Spectral;Time;Utilities"
   )
 
 add_dependencies(

@@ -32,7 +32,7 @@
 #include "ParallelAlgorithms/Events/ObserveFields.hpp"
 #include "ParallelAlgorithms/EventsAndTriggers/Event.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/Tags.hpp"  // IWYU pragma: keep
-#include "Time/Tags.hpp"  // IWYU pragma: keep
+#include "Time/Tags.hpp"                                  // IWYU pragma: keep
 #include "Utilities/Algorithm.hpp"
 #include "Utilities/GetOutput.hpp"
 #include "Utilities/Gsl.hpp"
@@ -74,6 +74,8 @@ struct MockContributeVolumeData {
     observers::ArrayComponentId array_component_id{};
     std::vector<TensorComponent> in_received_tensor_data{};
     std::vector<size_t> received_extents{};
+    std::vector<Spectral::Basis> received_basis{};
+    std::vector<Spectral::Quadrature> received_quadrature{};
   };
   static Results results;
 
@@ -86,13 +88,19 @@ struct MockContributeVolumeData {
                     const std::string& subfile_name,
                     const observers::ArrayComponentId& array_component_id,
                     std::vector<TensorComponent>&& in_received_tensor_data,
-                    const Index<Dim>& received_extents) noexcept {
+                    const Index<Dim>& received_extents,
+                    const std::array<Spectral::Basis, Dim>& received_basis,
+                    const std::array<Spectral::Quadrature, Dim>&
+                        received_quadrature) noexcept {
     results.observation_id = observation_id;
     results.subfile_name = subfile_name;
     results.array_component_id = array_component_id;
     results.in_received_tensor_data = in_received_tensor_data;
     results.received_extents.assign(received_extents.indices().begin(),
                                     received_extents.indices().end());
+    results.received_basis.assign(received_basis.begin(), received_basis.end());
+    results.received_quadrature.assign(received_quadrature.begin(),
+                                       received_quadrature.end());
   }
 };
 

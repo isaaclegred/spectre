@@ -65,13 +65,32 @@ void bind_h5vol() {
              return volume_file.get_tensor_component(observation_id,
                                                      tensor_component);
            })
-      .def("get_extents", +[](const h5::VolumeData& volume_file,
-                              const size_t observation_id) {
-        bp::list total_extents;
-        for (const auto& extents : volume_file.get_extents(observation_id)) {
-          total_extents.append(std_vector_to_py_list<size_t>(extents));
-        }
-        return total_extents;
-      });
+      .def("get_extents",
+           +[](const h5::VolumeData& volume_file, const size_t observation_id) {
+             bp::list total_extents;
+             for (const auto& extents :
+                  volume_file.get_extents(observation_id)) {
+               total_extents.append(std_vector_to_py_list<size_t>(extents));
+             }
+             return total_extents;
+           })
+      .def("get_quadratures",
+           +[](const h5::VolumeData& volume_file, const size_t observation_id) {
+             bp::list total_quadratures;
+             for (const auto& quadrature :
+                  volume_file.get_quadratures(observation_id)) {
+               total_quadratures.append(
+                   std_vector_to_py_list<std::string>(quadrature));
+             }
+             return total_quadratures;
+           })
+      .def("get_bases",
+           +[](const h5::VolumeData& volume_file, const size_t observation_id) {
+             bp::list total_bases;
+             for (const auto& basis : volume_file.get_bases(observation_id)) {
+               total_bases.append(std_vector_to_py_list<std::string>(basis));
+             }
+             return total_bases;
+           });
 }
 }  // namespace py_bindings

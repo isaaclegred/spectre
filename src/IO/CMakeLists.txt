@@ -27,6 +27,7 @@ target_link_libraries(
   INTERFACE DataStructures
   INTERFACE ErrorHandling
   INTERFACE Utilities
+  INTERFACE Spectral
   )
 
 if(BUILD_PYTHON_BINDINGS)
