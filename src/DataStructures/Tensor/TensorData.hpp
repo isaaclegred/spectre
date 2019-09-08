@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "DataStructures/DataVector.hpp"
-
+#include "NumericalAlgorithms/Spectral/Spectral.hpp"
 /// \cond
 namespace PUP {
 class er;
@@ -60,4 +60,23 @@ struct ExtentsAndTensorVolumeData {
   void pup(PUP::er& p) noexcept;  // NOLINT
   std::vector<size_t> extents{};
   std::vector<TensorComponent> tensor_components{};
+};
+
+/*!
+ * An extension of `ExtentsAndTensorVolumeData` to store `Spectral::Quadrature`
+ * and `Spectral::Basis`  associated with each axis of the element, in addition
+ * to the extents and tensor components data.
+ */
+struct ElementVolumeData : ExtentsAndTensorVolumeData {
+  ElementVolumeData() = default;
+  ElementVolumeData(std::vector<size_t> exts,
+                    std::vector<TensorComponent> components,
+                    std::vector<Spectral::Basis> basis_in,
+                    std::vector<Spectral::Quadrature> quadrature_in) noexcept
+      : ExtentsAndTensorVolumeData(std::move(exts), std::move(components)),
+        basis(std::move(basis_in)),
+        quadrature(std::move(quadrature_in)) {}
+  void pup(PUP::er& p) noexcept;  // NOLINT
+  std::vector<Spectral::Basis> basis{};
+  std::vector<Spectral::Quadrature> quadrature{};
 };

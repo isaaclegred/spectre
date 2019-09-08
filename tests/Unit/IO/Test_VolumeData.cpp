@@ -17,8 +17,10 @@
 #include "IO/H5/AccessType.hpp"
 #include "IO/H5/File.hpp"
 #include "IO/H5/VolumeData.hpp"
+#include "NumericalAlgorithms/Spectral/Spectral.hpp"
 #include "Utilities/Algorithm.hpp"
 #include "Utilities/FileSystem.hpp"
+#include "Utilities/MakeString.hpp"
 #include "Utilities/Numeric.hpp"
 
 SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
@@ -40,17 +42,23 @@ SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
   const std::vector<size_t> observation_ids{8435087234, size_t(-1)};
   const std::vector<double> observation_values{8.0, 2.3};
   const std::vector<std::string> grid_names{"[[2,3,4]]", "[[5,6,7]]"};
+  const std::vector<std::vector<Spectral::Basis>> bases{
+      {3, Spectral::Basis::Chebyshev}, {3, Spectral::Basis::Legendre}};
+  const std::vector<std::vector<Spectral::Quadrature>> quadratures{
+      {3, Spectral::Quadrature::Gauss},
+      {3, Spectral::Quadrature::GaussLobatto}};
   {
     auto& volume_file =
         my_file.insert<h5::VolumeData>("/element_data", version_number);
     const auto write_to_file = [
-      &volume_file, &tensor_components_and_coords, &grid_names
+      &volume_file, &tensor_components_and_coords, &grid_names, &bases,
+      &quadratures
     ](const size_t observation_id, const double observation_value) noexcept {
       std::string first_grid = grid_names.front();
       std::string last_grid = grid_names.back();
       volume_file.write_volume_data(
           observation_id, observation_value,
-          std::vector<ExtentsAndTensorVolumeData>{
+          std::vector<ElementVolumeData>{
               {{2, 2, 2},
                {TensorComponent{
                     first_grid + "/S",
@@ -72,7 +80,9 @@ SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
                     observation_value * tensor_components_and_coords[5]},
                 TensorComponent{
                     first_grid + "/T_z",
-                    observation_value * tensor_components_and_coords[6]}}},
+                    observation_value * tensor_components_and_coords[6]}},
+               bases.front(),
+               quadratures.front()},
               // Second Element Data
               {{2, 2, 2},
                {TensorComponent{
@@ -95,7 +105,9 @@ SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
                     observation_value * tensor_components_and_coords[4]},
                 TensorComponent{
                     last_grid + "/T_z",
-                    observation_value * tensor_components_and_coords[2]}}}});
+                    observation_value * tensor_components_and_coords[2]}},
+               bases.back(),
+               quadratures.back()}});
     };
     for (size_t i = 0; i < observation_ids.size(); ++i) {
       write_to_file(observation_ids[i], observation_values[i]);
@@ -121,13 +133,13 @@ SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
   }
   // Check that the volume data is correct
   const auto check_time = [
-    &volume_file, &tensor_components_and_coords, &grid_names
+    &volume_file, &tensor_components_and_coords, &grid_names, &bases,
+    &quadratures
   ](const size_t observation_id, const double observation_value) noexcept {
     CHECK(std::vector<std::vector<size_t>>{{2, 2, 2}, {2, 2, 2}} ==
           volume_file.get_extents(observation_id));
     CHECK(volume_file.get_observation_value(observation_id) ==
           observation_value);
-
     // Check that all of the grid names were written correctly by checking their
     // equality of elements
     const std::vector<std::string> read_grid_names =
@@ -152,7 +164,40 @@ SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
       grid_positions[i] =
           static_cast<size_t>(std::distance(read_grid_names.begin(), position));
     }
-
+    auto read_bases = volume_file.get_bases(observation_id);
+    std::sort(read_bases.begin(), read_bases.end(), std::less<>{});
+    auto read_quadratures = volume_file.get_quadratures(observation_id);
+    std::sort(read_quadratures.begin(), read_quadratures.end(), std::less<>{});
+    // We need non-const bases and quadratures in order to sort them, and we
+    // need them in their string form,
+    // clang-tidy consider pre-allocating the vector capacity
+    auto target_bases = [&bases]() {
+      std::vector<std::vector<std::string>> local_target_bases;
+      for (auto element_bases : bases) {
+        std::vector<std::string> axis_bases;
+        for (auto axis_basis : element_bases) {
+          axis_bases.emplace_back(MakeString{} << axis_basis); // NOLINT
+        }
+        local_target_bases.push_back(axis_bases);
+      }
+      return local_target_bases;
+    }();
+    std::sort(target_bases.begin(), target_bases.end(), std::less<>{});
+    auto target_quadratures = [&quadratures]() {
+      std::vector<std::vector<std::string>> local_target_quadratures;
+      for (auto element_quadratures : quadratures) {
+        std::vector<std::string> axis_quadratures;
+        for (auto axis_quadrature : element_quadratures) {
+          // NOLINTNEXTLINE
+          axis_quadratures.emplace_back(MakeString{} << axis_quadrature);
+        }
+        local_target_quadratures.push_back(axis_quadratures);
+      }
+      return local_target_quadratures;
+    }();
+    std::sort(target_bases.begin(), target_bases.end(), std::less<>{});
+    CHECK(target_bases == read_bases);
+    CHECK(target_quadratures == read_quadratures);
     const std::vector<std::string> expected_components{
         "S", "x-coord", "y-coord", "z-coord", "T_x", "T_y", "T_z",
     };
