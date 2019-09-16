@@ -20,6 +20,8 @@
 #include "IO/H5/Header.hpp"
 #include "IO/H5/Helpers.hpp"
 #include "IO/H5/Version.hpp"
+#include "Parallel/Printf.hpp"
+#include "Utilities/Gsl.hpp"
 #include "Utilities/MakeString.hpp"
 #include "Utilities/Numeric.hpp"
 /// \cond HIDDEN_SYMBOLS
@@ -32,8 +34,12 @@ void append_element_extents_and_connectivity(
     const gsl::not_null<std::vector<int>*> total_connectivity,
     const gsl::not_null<int*> total_points_so_far, const size_t dim,
     const ExtentsAndTensorVolumeData& element) noexcept {
+  Parallel::printf(
+      "Working at VolumeData.cpp 36, did the append function get called?  \n");
   // Process the element extents
   const auto& extents = element.extents;
+  Parallel::printf(
+      "Working at VolumeData.cpp 38, did the extents assign. work?  \n");
   if (extents.size() != dim) {
     ERROR("Trying to write data of dimensionality"
           << extents.size() << "but the VolumeData file has dimensionality"
@@ -67,18 +73,25 @@ void append_element_extents_and_connectivity(
 void append_element_name(const gsl::not_null<std::string*> grid_names,
                          const ExtentsAndTensorVolumeData& element) noexcept {
   // Get the name of the element
+  Parallel::printf("Working at VolumeData.cpp 74 did name function run?  \n");
   const auto& first_tensor_name = element.tensor_components.front().name;
+  Parallel::printf("Working at VolumeData.cpp 78, did tensor name found?  \n");
+  Parallel::printf("Size of first_name %d", sizeof(first_tensor_name));
   ASSERT(first_tensor_name.find_last_of('/') != std::string::npos,
          "The expected format of the tensor component names is "
          "'GROUP_NAME/COMPONENT_NAME' but could not find a '/' in '"
              << first_tensor_name << "'.");
+
   const auto spatial_name =
       first_tensor_name.substr(0, first_tensor_name.find_last_of('/'));
+  Parallel::printf("Working at VolumeData.cpp 82 SPATIAL NAME FOUND  \n");
   *grid_names += spatial_name + VolumeData::separator();
+  Parallel::printf("Working at VolumeData.cpp 82 finished adding name  \n");
 }
 void append_element_quadratures(const gsl::not_null<std::string*> quadratures,
                                 const ElementVolumeData& element,
                                 const size_t dim) {
+  Parallel::printf("Working at VolumeData.cpp 86 called quad func  \n");
   for (size_t axis = 0; axis < dim; axis++) {
     MakeString axis_quadrature{};
     axis_quadrature << element.quadrature[axis];
@@ -91,6 +104,7 @@ void append_element_bases(const gsl::not_null<std::string*> bases,
     MakeString axis_basis{};
     axis_basis << element.basis[axis];
     *bases += axis_basis;
+    Parallel::printf("Working at VolumeData.cpp 99 finished basis func  \n");
   }
 }
 
@@ -155,6 +169,10 @@ void VolumeData::write_volume_data(
                << component.name << "'.");
     return component.name.substr(component.name.find_last_of('/') + 1);
   };
+  Parallel::printf(
+      "Working at VolumeData.cpp 159, just before component names \n");
+  size_t vec_size = elements.size();
+  Parallel::printf("elements size, %d \n", vec_size);
   const std::vector<std::string> component_names(
       boost::make_transform_iterator(elements.front().tensor_components.begin(),
                                      get_component_name),
@@ -170,7 +188,7 @@ void VolumeData::write_volume_data(
       h5::read_value_attribute<size_t>(volume_data_group_.id(), "dimension");
   // Extract Tensor Data one component at a time
   std::vector<size_t> total_extents;
-  std::string grid_names;
+  std::string grid_names = "";
   std::vector<int> total_connectivity;
   std::string quadratures;
   std::string bases;
@@ -181,13 +199,21 @@ void VolumeData::write_volume_data(
   // Loop over tensor componenents
   for (size_t i = 0; i < component_names.size(); i++) {
     std::string component_name = component_names[i];
-
+    Parallel::printf("Working at VolumeData.cpp 186,inside tensor loop \n");
     std::vector<double> contiguous_tensor_data{};
     for (auto& element : elements) {
+      Parallel::printf(
+          "Working at VolumeData.cpp 189, before checking if first \n");
       if (i == 0) {  // True if first tensor component being accessed
+        Parallel::printf(
+            "Working at VolumeData.cpp 191 did the if statement run?  \n");
         append_element_name(&grid_names, element);
+        Parallel::printf(
+            "Working at VolumeData.cpp 192, just before quadrature \n");
         append_element_quadratures(&quadratures, element, dim);
         append_element_bases(&bases, element, dim);
+        Parallel::printf(
+            "Working at VolumeData.cpp 195, finished writing bases \n");
         append_element_extents_and_connectivity(
             &total_extents, &total_connectivity, &total_points_so_far, dim,
             element);
@@ -198,7 +224,7 @@ void VolumeData::write_volume_data(
                                     tensor_data_on_grid.end());
 
     }  // for each element
-
+    Parallel::printf("Working at VolumeData.cpp just before writing  \n");
     // Write the data for the tensor component
     if (h5::contains_dataset_or_group(observation_group.id(), "",
                                       component_name)) {
@@ -234,6 +260,7 @@ void VolumeData::write_volume_data(
   // Write the Connectivity
   h5::write_data(observation_group.id(), total_connectivity,
                  {total_connectivity.size()}, "connectivity");
+  Parallel::printf("Working at VolumeData.cpp 239, finished writing data \n");
 }
 // Write Volume Data stored in a vector of `ExtentsAndTensorVolumeData` to
 // an `observation_group` in a `VolumeData` file.
