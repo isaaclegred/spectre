@@ -23,12 +23,9 @@
 #include "Parallel/ConstGlobalCache.hpp"
 #include "Parallel/Info.hpp"
 #include "Parallel/Invoke.hpp"
-#include "Parallel/Printf.hpp"
 #include "Utilities/Algorithm.hpp"
 #include "Utilities/MakeString.hpp"
-#include "Utilities/PrintHelpers.hpp"
 #include "Utilities/Requires.hpp"
-#include "Utilities/StdHelpers.hpp"
 #include "Utilities/TMPL.hpp"
 #include "Utilities/TaggedTuple.hpp"
 
@@ -96,8 +93,7 @@ struct ContributeVolumeData {
                                                received_basis.end());
             std::vector<Spectral::Quadrature> quadratures(
                 received_quadrature.begin(), received_quadrature.end());
-            Parallel::printf("Printing data at VolumeActons Line 100, %d",
-                             extents[0]);
+
             volume_data->operator[](observation_id)
                 .emplace(array_component_id,
                          ElementVolumeData(std::move(extents),
@@ -180,24 +176,14 @@ struct ContributeVolumeDataToWriter {
               volume_observers_contributed) mutable noexcept {
           if (volume_data->count(observation_id) == 0) {
             // We haven't been called before on this processing element.
-            for (const auto& t : in_volume_data) {
-              Parallel::printf("The tensor components are %s",
-                               t.second.tensor_components);
-            }
             volume_data->operator[](observation_id) = std::move(in_volume_data);
             (*volume_observers_contributed)[observation_id] = 1;
           } else {
-            for (const auto& t : in_volume_data) {
-              Parallel::printf("The tensor components are %s",
-                               t.second.tensor_components);
-            }
-
             auto& current_data = volume_data->at(observation_id);
             current_data.insert(std::make_move_iterator(in_volume_data.begin()),
                                 std::make_move_iterator(in_volume_data.end()));
             (*volume_observers_contributed)[observation_id]++;
           }
-          Parallel::printf("working @ VolumeActions.hpp 183 \n");
           // Check if we have received all "volume" data from the Observer
           // group. If so we write to disk.
           if (volume_observers_contributed->at(observation_id) ==
@@ -260,11 +246,8 @@ struct WriteVolumeData {
       constexpr size_t version_number = 0;
       auto& volume_file =
           h5file.try_insert<h5::VolumeData>(subfile_name, version_number);
-      Parallel::printf(
-          "Working at VolumeActions.hpp 247, just before writing \n");
       std::vector<ElementVolumeData> dg_elements;
       dg_elements.reserve(volume_data.size());
-      Parallel::printf("The size is %d", dg_elements.size());
       for (auto id_and_element : volume_data) {
         dg_elements.push_back(id_and_element.second);
       }

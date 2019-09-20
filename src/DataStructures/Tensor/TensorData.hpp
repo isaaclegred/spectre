@@ -69,14 +69,12 @@ struct ElementVolumeData : ExtentsAndTensorVolumeData {
   ElementVolumeData() = default;
   ElementVolumeData(std::vector<size_t> extents,
                     std::vector<TensorComponent> components,
-                    std::vector <Spectral::Basis> basis,
+                    std::vector<Spectral::Basis> basis,
                     std::vector<Spectral::Quadrature> quadrature) noexcept
-  :ExtentsAndTensorVolumeData(extents, components),
-    basis(std::move(basis)), quadrature(std::move(quadrature)) {}
+      : ExtentsAndTensorVolumeData(extents, components),
+        basis(std::move(basis)),
+        quadrature(std::move(quadrature)) {}
   void pup(PUP::er& p) noexcept;
-  std::vector<size_t> extents{};
-  std::vector<TensorComponent> tensor_components{};
   std::vector<Spectral::Basis> basis{};
   std::vector<Spectral::Quadrature> quadrature{};
-
 };
