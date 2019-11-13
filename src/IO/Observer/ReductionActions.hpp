@@ -152,7 +152,7 @@ struct ContributeReductionData {
         db::get<Tags::ReductionArrayComponentIds>(box));
   }
 };
-// A single node contributes when it reaches a certain specified time.
+// A single node contributes at every time step
 struct ContributeTimeInfo {
   template <
       typename ParallelComponent, typename DbTagsList, typename Metavariables,
