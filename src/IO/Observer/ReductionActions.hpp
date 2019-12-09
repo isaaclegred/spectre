@@ -156,30 +156,24 @@ struct ContributeReductionData {
 struct ContributeTimeInfo {
   template <
       typename ParallelComponent, typename DbTagsList, typename Metavariables,
-      typename ArrayIndex, typename... Ts,
+      typename ArrayIndex,
       Requires<
-          tmpl::list_contains_v<DbTagsList, Tags::ReductionData<Ts...>> and
-          tmpl::list_contains_v<DbTagsList, Tags::ReductionDataNames<Ts...>> and
           tmpl::list_contains_v<DbTagsList,
                                 Tags::ReductionObserversContributed>> = nullptr>
   static auto apply(db::DataBox<DbTagsList>& box,
                     Parallel::ConstGlobalCache<Metavariables>& cache,
                     const ArrayIndex& /*array_index*/,
-                    const observers::ObservationId& observation_id,
-                    const std::string& subfile_name,
-                    const std::vector<std::string>& reduction_names,
-                    Parallel::ReductionData<Ts...>&& reduction_data) noexcept {
-    db::mutate<Tags::ReductionData<Ts...>, Tags::ReductionDataNames<Ts...>,
-               Tags::ReductionObserversContributed>(
+                    const observers::ObservationId& observation_id
+                    ) noexcept {
+    db::mutate<Tags::ReductionObserversContributed>(
         make_not_null(&box),
         [
-          &observation_id, reduction_data = std::move(reduction_data),
-          &reduction_names, &cache, &subfile_name
+         &observation_id,&cache
         ]( const gsl::not_null<
               std::unordered_map<observers::ObservationId, size_t>*>
               reduction_observers_contributed,
           const std::unordered_set<ArrayComponentId>&
-              reduction_component_ids) mutable noexcept {
+           reduction_component_ids) mutable noexcept {
           auto& contribute_count =
               (*reduction_observers_contributed)[observation_id];
           contribute_count++;
@@ -388,24 +382,20 @@ struct WriteReductionData {
 struct PrintTimeInfo {
  private:
   template <typename... Ts, size_t... Is>
-  static void write_data(const observers::ObservationId& observation_id,
-                         std::index_sequence<Is...> /*meta*/) noexcept {
-    Parallel::printf("All nodes have reached ObservationID %s \n ",
+  static void print_time(const observers::ObservationId& observation_id)
+    noexcept {
+    Parallel::printf("All nodes have reached ObservationID %s \n",
                      MakeString{} << observation_id);
   }
 
  public:
   template <
-      typename ParallelComponent, typename DbTagsList, typename Metavariables,
-      typename ArrayIndex, typename... ReductionDatums,
-      Requires<tmpl::list_contains_v<
-                   DbTagsList, Tags::ReductionData<ReductionDatums...>> and
-               tmpl::list_contains_v<
-                   DbTagsList, Tags::ReductionDataNames<ReductionDatums...>> and
-               tmpl::list_contains_v<DbTagsList,
-                                     Tags::ReductionObserversContributed> and
-               tmpl::list_contains_v<DbTagsList, Tags::H5FileLock>> = nullptr>
-  static void apply(db::DataBox<DbTagsList>& box,
+    typename ParallelComponent, typename DbTagsList, typename Metavariables,
+   typename ArrayIndex,
+   Requires<tmpl::list_contains_v<DbTagsList,
+                                  Tags::ReductionObserversContributed> and
+            tmpl::list_contains_v<DbTagsList, Tags::H5FileLock>> = nullptr>
+    static void apply(db::DataBox<DbTagsList>& box,
                     Parallel::ConstGlobalCache<Metavariables>& cache,
                     const ArrayIndex& /*array_index*/,
                     const gsl::not_null<CmiNodeLock*> node_lock,
@@ -434,9 +424,7 @@ struct PrintTimeInfo {
                  : 0;
     }
     ();
-    db::mutate<Tags::ReductionData<ReductionDatums...>,
-               Tags::ReductionDataNames<ReductionDatums...>,
-               Tags::ReductionObserversContributed, Tags::H5FileLock>(
+    db::mutate<Tags::ReductionObserversContributed, Tags::H5FileLock>(
         make_not_null(&box),
         [
           &cache, &expected_calls_from_this_node,
@@ -492,9 +480,8 @@ struct PrintTimeInfo {
 
     if (write_to_disk) {
       Parallel::lock(&file_lock);
-      PrintTimeInfo::write_data(
-          observation_id,
-          std::make_index_sequence<sizeof...(ReductionDatums)>{});
+      PrintTimeInfo::print_time(
+          observation_id);
       Parallel::unlock(&file_lock);
     }
   }
