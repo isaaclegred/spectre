@@ -29,6 +29,9 @@
 #include "Utilities/MakeString.hpp"
 #include "Utilities/Numeric.hpp"
 
+#include <chrono>
+#include "Parallel/Printf.hpp"
+
 /// \cond HIDDEN_SYMBOLS
 namespace h5 {
 namespace {
@@ -53,8 +56,8 @@ void append_element_extents_and_connectivity(
   // Generate the connectivity data for the element
   // Possible optimization: local_connectivity.reserve(BLAH) if we can figure
   // out size without computing all the connectivities.
-  const std::vector<int> connectivity =
-      [&extents, &total_points_so_far ]() noexcept {
+  const std::vector<int> connectivity = [&extents,
+                                         &total_points_so_far]() noexcept {
     std::vector<int> local_connectivity;
     for (const auto& cell : vis::detail::compute_cells(extents)) {
       for (const auto& bounding_indices : cell.bounding_indices) {
@@ -63,8 +66,7 @@ void append_element_extents_and_connectivity(
       }
     }
     return local_connectivity;
-  }
-  ();
+  }();
   *total_points_so_far += element_num_points;
   total_connectivity->insert(total_connectivity->end(), connectivity.begin(),
                              connectivity.end());
@@ -142,6 +144,7 @@ VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
 void VolumeData::write_volume_data(
     const size_t observation_id, const double observation_value,
     const std::vector<ElementVolumeData>& elements) noexcept {
+  auto start = std::chrono::steady_clock::now();
   const std::string path = "ObservationId" + std::to_string(observation_id);
   detail::OpenGroup observation_group(volume_data_group_.id(), path,
                                       AccessType::ReadWrite);
@@ -215,6 +218,11 @@ void VolumeData::write_volume_data(
                    {contiguous_tensor_data.size()}, component_name);
   }  // for each component
 
+  auto end = std::chrono::steady_clock::now();
+  std::chrono::duration<double> elapsed_seconds = end - start;
+  Parallel::printf("elapsed time: Without meta %lf ", elapsed_seconds.count());
+  auto m_start = std::chrono::steady_clock::now();
+
   // Write the grid extents contiguously, the first `dim` belong to the
   // First grid, the second `dim` belong to the second grid, and so on,
   // Ordering is `x, y, z, ... `
@@ -237,6 +245,9 @@ void VolumeData::write_volume_data(
   // Write the Connectivity
   h5::write_data(observation_group.id(), total_connectivity,
                  {total_connectivity.size()}, "connectivity");
+  auto m_end = std::chrono::steady_clock::now();
+  std::chrono::duration<double> m_elapsed_seconds = m_end - m_start;
+  Parallel::printf("elapsed time:  meta %lf ", m_elapsed_seconds.count());
 }
 
 // Write Volume Data stored in a vector of `ExtentsAndTensorVolumeData` to
@@ -342,8 +353,8 @@ std::vector<size_t> VolumeData::list_observation_ids() const noexcept {
           boost::make_transform_iterator(names.end(), helper)};
 }
 
-double VolumeData::get_observation_value(const size_t observation_id) const
-    noexcept {
+double VolumeData::get_observation_value(
+    const size_t observation_id) const noexcept {
   const std::string path = "ObservationId" + std::to_string(observation_id);
   detail::OpenGroup observation_group(volume_data_group_.id(), path,
                                       AccessType::ReadOnly);
@@ -391,8 +402,8 @@ std::vector<std::string> VolumeData::get_grid_names(
 }
 
 DataVector VolumeData::get_tensor_component(
-    const size_t observation_id, const std::string& tensor_component) const
-    noexcept {
+    const size_t observation_id,
+    const std::string& tensor_component) const noexcept {
   const std::string path = "ObservationId" + std::to_string(observation_id);
   detail::OpenGroup observation_group(volume_data_group_.id(), path,
                                       AccessType::ReadOnly);
@@ -449,8 +460,8 @@ std::pair<size_t, size_t> offset_and_length_for_grid(
     const auto element_index =
         std::distance(all_grid_names.begin(), found_grid_name);
     const size_t element_data_offset = std::accumulate(
-        all_extents.begin(), all_extents.begin() + element_index,
-        0_st, [](size_t offset, const std::vector<size_t>& extents) noexcept {
+        all_extents.begin(), all_extents.begin() + element_index, 0_st,
+        [](size_t offset, const std::vector<size_t>& extents) noexcept {
           return offset + alg::accumulate(extents, 1_st, std::multiplies<>{});
         });
     const size_t element_data_length = alg::accumulate(
