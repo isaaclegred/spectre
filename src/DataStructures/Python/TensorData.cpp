@@ -31,8 +31,18 @@ void bind_tensordata(py::module& m) {  // NOLINT
       .def("__str__", [](const TensorComponent& tc) { return get_output(tc); })
       .def("__repr__",
            [](const TensorComponent& tc) { return get_output(tc); });
-  py_enum_<Spectral::Basis::Quadrature>
 
+  py::enum_<Spectral::Basis>(m, "SpectralBasis")
+    .value("Legendre", Spectral::Basis::Legendre)
+    .value("Chebyshev", Spectral::Basis::Chebyshev)
+    .value("FiniteDifference", Spectral::Basis::FiniteDifference)
+    .export_values();
+  py::enum_<Spectral::Quadrature>(m, "SpectralQuadrature")
+    .value("Gauss", Spectral::Quadrature::Gauss)
+    .value("GaussLobatto", Spectral::Quadrature::GaussLobatto)
+    .value("CellCentered", Spectral::Quadrature::CellCentered)
+    .value("FaceCentered", Spectral::Quadrature::FaceCentered)
+    .export_values();
       // Wrapper for ExtentsAndTensorVolumeData
       py::class_<ExtentsAndTensorVolumeData>(m, "ExtentsAndTensorVolumeData")
           .def(py::init<std::vector<size_t>, std::vector<TensorComponent>>(),
@@ -62,21 +72,21 @@ void bind_tensordata(py::module& m) {  // NOLINT
            py::arg("extents"), py::arg("components"), py::arg("basis"),
            py::arg("quadrature"))
       .def("get_extents",
-           [](const ElementVolumeData& evd) { return etvd.extents; })
+           [](const ElementVolumeData& evd) { return evd.extents; })
       .def("set_extents",
            [](ElementVolumeData& evd, const std::vector<size_t>& v) {
-             etvd.extents = v;
+             evd.extents = v;
            })
       .def(
           "set_tensor_components",
           [](ElementVolumeData& evd, const std::vector<TensorComponent>& v_tc) {
-            etvd.tensor_components = v_tc;
+            evd.tensor_components = v_tc;
           })
       .def("get_tensor_components",
            [](const ElementVolumeData& evd) { return evd.tensor_components; })
-      .def("get_basis", [](const ElementVolumeData& evd) { return evd.basis })
+    .def("get_basis", [](const ElementVolumeData& evd) { return evd.basis; })
       .def("get_quadrature",
-           [](const ElementVolumeData& evd) { return evd.quadrature });
+           [](const ElementVolumeData& evd) { return evd.quadrature; });
 }
 
 }  // namespace py_bindings
