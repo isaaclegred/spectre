@@ -42,3 +42,8 @@ spectre_add_python_bindings_test(
   "Test_VolumeData.py"
   "unit;IO;H5;Python"
   )
+
+spectre_add_python_bindings_test(
+  "Unit.DataStructures.Tensor.Python.TensorData"
+  Test_TensorData.py
+  "Unit;DataStructures;Tensor;Python")
