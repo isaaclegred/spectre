@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "DataStructures/DataVector.hpp"
+#include "NumericalAlgorithms/Spectral/Spectral.hpp"
 #include "PythonBindings/BoundChecks.hpp"
 #include "Utilities/GetOutput.hpp"
 
@@ -30,24 +31,52 @@ void bind_tensordata(py::module& m) {  // NOLINT
       .def("__str__", [](const TensorComponent& tc) { return get_output(tc); })
       .def("__repr__",
            [](const TensorComponent& tc) { return get_output(tc); });
+  py_enum_<Spectral::Basis::Quadrature>
 
-  // Wrapper for ExtentsAndTensorVolumeData
-  py::class_<ExtentsAndTensorVolumeData>(m, "ExtentsAndTensorVolumeData")
-      .def(py::init<std::vector<size_t>, std::vector<TensorComponent>>(),
-           py::arg("extents"), py::arg("components"))
+      // Wrapper for ExtentsAndTensorVolumeData
+      py::class_<ExtentsAndTensorVolumeData>(m, "ExtentsAndTensorVolumeData")
+          .def(py::init<std::vector<size_t>, std::vector<TensorComponent>>(),
+               py::arg("extents"), py::arg("components"))
+          .def("get_extents",
+               [](const ExtentsAndTensorVolumeData& etvd) {
+                 return etvd.extents;
+               })
+          .def("set_extents",
+               [](ExtentsAndTensorVolumeData& etvd,
+                  const std::vector<size_t>& v) { etvd.extents = v; })
+          .def("set_tensor_components",
+               [](ExtentsAndTensorVolumeData& etvd,
+                  const std::vector<TensorComponent>& v_tc) {
+                 etvd.tensor_components = v_tc;
+               })
+          .def("get_tensor_components",
+               [](const ExtentsAndTensorVolumeData& etvd) {
+                 return etvd.tensor_components;
+               });
+
+  py::class_<ElementVolumeData, ExtentsAndTensorVolumeData>(m,
+                                                            "ElementVolumeData")
+      .def(py::init<std::vector<size_t>, std::vector<TensorComponent>,
+                    std::vector<Spectral::Basis>,
+                    std::vector<Spectral::Quadrature>>(),
+           py::arg("extents"), py::arg("components"), py::arg("basis"),
+           py::arg("quadrature"))
       .def("get_extents",
-           [](const ExtentsAndTensorVolumeData& etvd) { return etvd.extents; })
+           [](const ElementVolumeData& evd) { return etvd.extents; })
       .def("set_extents",
-           [](ExtentsAndTensorVolumeData& etvd, const std::vector<size_t>& v) {
+           [](ElementVolumeData& evd, const std::vector<size_t>& v) {
              etvd.extents = v;
            })
-      .def("set_tensor_components",
-           [](ExtentsAndTensorVolumeData& etvd,
-              const std::vector<TensorComponent>& v_tc) {
-             etvd.tensor_components = v_tc;
-           })
-      .def("get_tensor_components", [](const ExtentsAndTensorVolumeData& etvd) {
-        return etvd.tensor_components;
-      });
+      .def(
+          "set_tensor_components",
+          [](ElementVolumeData& evd, const std::vector<TensorComponent>& v_tc) {
+            etvd.tensor_components = v_tc;
+          })
+      .def("get_tensor_components",
+           [](const ElementVolumeData& evd) { return evd.tensor_components; })
+      .def("get_basis", [](const ElementVolumeData& evd) { return evd.basis })
+      .def("get_quadrature",
+           [](const ElementVolumeData& evd) { return evd.quadrature });
 }
+
 }  // namespace py_bindings
