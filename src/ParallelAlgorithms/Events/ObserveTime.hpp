@@ -40,19 +40,19 @@ namespace dg {
 namespace Events {
 template <typename ObservationValueTag, typename Tensors,
           typename EventRegistrars>
-class ObserveErrorNorms;
+class OutputTime;
 
 namespace Registrars {
 template <typename ObservationValueTag, typename Tensors>
-using ObserveErrorNorms =
-    ::Registration::Registrar<Events::ObserveErrorNorms, ObservationValueTag,
+using OutputTime =
+    ::Registration::Registrar<Events::OutputTime, ObservationValueTag,
                               Tensors>;
 }  // namespace Registrars
 
 template <typename ObservationValueTag, typename Tensors,
           typename EventRegistrars = tmpl::list<
-              Registrars::ObserveErrorNorms<ObservationValueTag, Tensors>>>
-class ObserveErrorNorms;  // IWYU pragma: keep
+              Registrars::OutputTime<ObservationValueTag, Tensors>>>
+class OutputTime;  // IWYU pragma: keep
 
 /*!
  * \ingroup DiscontinuousGalerkinGroup
@@ -73,17 +73,14 @@ class ObserveErrorNorms;  // IWYU pragma: keep
  */
 template <typename ObservationValueTag, typename... Tensors,
           typename EventRegistrars>
-class ObserveErrorNorms<ObservationValueTag, tmpl::list<Tensors...>,
+class OutputTime<ObservationValueTag, tmpl::list<Tensors...>,
                         EventRegistrars> : public Event<EventRegistrars> {
  private:
   template <typename Tag>
-  struct LocalSquareError {
+  struct LocalTime {
     using type = double;
   };
 
-  using L2ErrorDatum = Parallel::ReductionDatum<double, funcl::Plus<>,
-                                                funcl::Sqrt<funcl::Divides<>>,
-                                                std::index_sequence<1>>;
   using ReductionData = tmpl::wrap<
       tmpl::append<
           tmpl::list<Parallel::ReductionDatum<double, funcl::AssertEqual<>>,
@@ -95,24 +92,14 @@ class ObserveErrorNorms<ObservationValueTag, tmpl::list<Tensors...>,
   /// \cond
   explicit ObserveErrorNorms(CkMigrateMessage* /*unused*/) noexcept {}
   using PUP::able::register_constructor;
-  WRAPPED_PUPable_decl_template(ObserveErrorNorms);  // NOLINT
+  WRAPPED_PUPable_decl_template(OutputTime);  // NOLINT
   /// \endcond
 
   using options = tmpl::list<>;
   static constexpr OptionString help =
-      "Observe the RMS errors in the tensors compared to their analytic\n"
-      "solution.\n"
-      "\n"
-      "Writes reduction quantities:\n"
-      " * ObservationValueTag\n"
-      " * NumberOfPoints = total number of points in the domain\n"
-      " * Error(*) = RMS errors in Tensors (see online help details)\n"
-      "\n"
-      "Warning: Currently, only one reduction observation event can be\n"
-      "triggered at a given observation value.  Causing multiple events to\n"
-      "run at once will produce unpredictable results.";
+    "Output the time at each slab of of an evolution \n";
 
-  ObserveErrorNorms() = default;
+  OutputTime() = default;
 
   using observed_reduction_data_tags =
       observers::make_reduction_data_tags<tmpl::list<ReductionData>>;
@@ -152,7 +139,7 @@ class ObserveErrorNorms<ObservationValueTag, tmpl::list<Tensors...>,
         *Parallel::get_parallel_component<observers::Observer<Metavariables>>(
              cache)
              .ckLocalBranch();
-    Parallel::simple_action<observers::Actions::ContributeReductionData>(
+    Parallel::simple_action<observers::Actions::ContributeTimeInfo>(
         local_observer,
         observers::ObservationId(
             observation_value,
@@ -162,8 +149,7 @@ class ObserveErrorNorms<ObservationValueTag, tmpl::list<Tensors...>,
                                  "NumberOfPoints",
                                  ("Error(" + db::tag_name<Tensors>() + ")")...},
         ReductionData{
-            static_cast<double>(observation_value), num_points,
-            std::move(get<LocalSquareError<Tensors>>(local_square_errors))...});
+            static_cast<double>(observation_value)});
   }
 };
 

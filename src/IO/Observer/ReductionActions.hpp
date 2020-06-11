@@ -95,20 +95,19 @@ struct ContributeReductionData {
     db::mutate<Tags::ReductionData<Ts...>, Tags::ReductionDataNames<Ts...>,
                Tags::ReductionObserversContributed>(
         make_not_null(&box),
-        [
-          &observation_id, reduction_data = std::move(reduction_data),
-          &reduction_names, &cache, &subfile_name
-        ](const gsl::not_null<std::unordered_map<
-              ObservationId, Parallel::ReductionData<Ts...>>*>
-              reduction_data_map,
-          const gsl::not_null<
-              std::unordered_map<ObservationId, std::vector<std::string>>*>
-              reduction_names_map,
-          const gsl::not_null<
-              std::unordered_map<observers::ObservationId, size_t>*>
-              reduction_observers_contributed,
-          const std::unordered_set<ArrayComponentId>&
-              reduction_component_ids) mutable noexcept {
+        [&observation_id, reduction_data = std::move(reduction_data),
+         &reduction_names, &cache, &subfile_name](
+            const gsl::not_null<std::unordered_map<
+                ObservationId, Parallel::ReductionData<Ts...>>*>
+                reduction_data_map,
+            const gsl::not_null<
+                std::unordered_map<ObservationId, std::vector<std::string>>*>
+                reduction_names_map,
+            const gsl::not_null<
+                std::unordered_map<observers::ObservationId, size_t>*>
+                reduction_observers_contributed,
+            const std::unordered_set<ArrayComponentId>&
+                reduction_component_ids) mutable noexcept {
           auto& contribute_count =
               (*reduction_observers_contributed)[observation_id];
           if (reduction_data_map->count(observation_id) == 0) {
@@ -153,7 +152,7 @@ struct ContributeReductionData {
   }
 };
 // A single node contributes at every time step
-struct ContributeTimeInfo {
+struct ContributePrintInfo {
   template <
       typename ParallelComponent, typename DbTagsList, typename Metavariables,
       typename ArrayIndex, typename... Ts,
@@ -172,20 +171,19 @@ struct ContributeTimeInfo {
     db::mutate<Tags::ReductionData<Ts...>, Tags::ReductionDataNames<Ts...>,
                Tags::ReductionObserversContributed>(
         make_not_null(&box),
-        [
-          &observation_id, reduction_data = std::move(reduction_data),
-          &reduction_names, &cache, &subfile_name
-        ](const gsl::not_null<std::unordered_map<
-              ObservationId, Parallel::ReductionData<Ts...>>*>
-              reduction_data_map,
-          const gsl::not_null<
-              std::unordered_map<ObservationId, std::vector<std::string>>*>
-              reduction_names_map,
-          const gsl::not_null<
-              std::unordered_map<observers::ObservationId, size_t>*>
-              reduction_observers_contributed,
-          const std::unordered_set<ArrayComponentId>&
-              reduction_component_ids) mutable noexcept {
+        [&observation_id, reduction_data = std::move(reduction_data),
+         &reduction_names, &cache, &subfile_name](
+            const gsl::not_null<std::unordered_map<
+                ObservationId, Parallel::ReductionData<Ts...>>*>
+                reduction_data_map,
+            const gsl::not_null<
+                std::unordered_map<ObservationId, std::vector<std::string>>*>
+                reduction_names_map,
+            const gsl::not_null<
+                std::unordered_map<observers::ObservationId, size_t>*>
+                reduction_observers_contributed,
+            const std::unordered_set<ArrayComponentId>&
+                reduction_component_ids) mutable noexcept {
           auto& contribute_count =
               (*reduction_observers_contributed)[observation_id];
           if (reduction_data_map->count(observation_id) == 0) {
@@ -297,45 +295,42 @@ struct WriteReductionData {
     bool write_to_disk = false;
     std::vector<std::string> legend{};
     Parallel::lock(node_lock);
-    const auto expected_calls_from_this_node =
-        [&box, &observation_id ]() noexcept {
+    const auto expected_calls_from_this_node = [&box,
+                                                &observation_id]() noexcept {
       const auto hash = observation_id.observation_type_hash();
       const auto& registered_reduction_observers =
           db::get<Tags::ReductionObserversRegistered>(box);
       return (registered_reduction_observers.count(hash) == 1)
                  ? registered_reduction_observers.at(hash).size()
                  : 0;
-    }
-    ();
-    const auto expected_calls_from_other_nodes =
-        [&box, &observation_id ]() noexcept {
+    }();
+    const auto expected_calls_from_other_nodes = [&box,
+                                                  &observation_id]() noexcept {
       const auto hash = observation_id.observation_type_hash();
       const auto& registered_reduction_observers =
           db::get<Tags::ReductionObserversRegisteredNodes>(box);
       return (registered_reduction_observers.count(hash) == 1)
                  ? registered_reduction_observers.at(hash).size()
                  : 0;
-    }
-    ();
+    }();
     db::mutate<Tags::ReductionData<ReductionDatums...>,
                Tags::ReductionDataNames<ReductionDatums...>,
                Tags::ReductionObserversContributed, Tags::H5FileLock>(
         make_not_null(&box),
-        [
-          &cache, &expected_calls_from_this_node,
-          &expected_calls_from_other_nodes, &file_lock, &in_reduction_data,
-          &legend, &observation_id, &reduction_names, &subfile_name,
-          &write_to_disk
-        ](const gsl::not_null<
-              db::item_type<Tags::ReductionData<ReductionDatums...>>*>
-              reduction_data,
-          const gsl::not_null<
-              std::unordered_map<ObservationId, std::vector<std::string>>*>
-              reduction_names_map,
-          const gsl::not_null<
-              std::unordered_map<observers::ObservationId, size_t>*>
-              reduction_observers_contributed,
-          const gsl::not_null<CmiNodeLock*> reduction_file_lock) noexcept {
+        [&cache, &expected_calls_from_this_node,
+         &expected_calls_from_other_nodes, &file_lock, &in_reduction_data,
+         &legend, &observation_id, &reduction_names, &subfile_name,
+         &write_to_disk](
+            const gsl::not_null<
+                db::item_type<Tags::ReductionData<ReductionDatums...>>*>
+                reduction_data,
+            const gsl::not_null<
+                std::unordered_map<ObservationId, std::vector<std::string>>*>
+                reduction_names_map,
+            const gsl::not_null<
+                std::unordered_map<observers::ObservationId, size_t>*>
+                reduction_observers_contributed,
+            const gsl::not_null<CmiNodeLock*> reduction_file_lock) noexcept {
           auto& contribute_count =
               (*reduction_observers_contributed)[observation_id];
           const auto node_id = Parallel::my_node();
@@ -412,9 +407,16 @@ struct WriteReductionData {
     }
   }
 };
-// Collect all of the Time information from individual nodes and then print
-// from node 0 the "current" simulation time.
-struct PrintTimeInfo {
+/*!
+ * \ingroup ObserversGroup
+ * \brief Collect the reduction data from the Observer group on the
+ * ObserverWriter nodegroup before sending to node 0 for printing.
+ * This could be useful for example for printing the current time
+ * in a simulation after all nodes have reached it.
+ *
+ * \note This action is also used for printing on node 0.
+ */
+struct PrintInfo {
  private:
   template <typename... Ts, size_t... Is>
   static void write_data(const observers::ObservationId& observation_id,
@@ -447,45 +449,42 @@ struct PrintTimeInfo {
     bool write_to_disk = false;
     std::vector<std::string> legend{};
     Parallel::lock(node_lock);
-    const auto expected_calls_from_this_node =
-        [&box, &observation_id ]() noexcept {
+    const auto expected_calls_from_this_node = [&box,
+                                                &observation_id]() noexcept {
       const auto hash = observation_id.observation_type_hash();
       const auto& registered_reduction_observers =
           db::get<Tags::ReductionObserversRegistered>(box);
       return (registered_reduction_observers.count(hash) == 1)
                  ? registered_reduction_observers.at(hash).size()
                  : 0;
-    }
-    ();
-    const auto expected_calls_from_other_nodes =
-        [&box, &observation_id ]() noexcept {
+    }();
+    const auto expected_calls_from_other_nodes = [&box,
+                                                  &observation_id]() noexcept {
       const auto hash = observation_id.observation_type_hash();
       const auto& registered_reduction_observers =
           db::get<Tags::ReductionObserversRegisteredNodes>(box);
       return (registered_reduction_observers.count(hash) == 1)
                  ? registered_reduction_observers.at(hash).size()
                  : 0;
-    }
-    ();
+    }();
     db::mutate<Tags::ReductionData<ReductionDatums...>,
                Tags::ReductionDataNames<ReductionDatums...>,
                Tags::ReductionObserversContributed, Tags::H5FileLock>(
         make_not_null(&box),
-        [
-          &cache, &expected_calls_from_this_node,
-          &expected_calls_from_other_nodes, &file_lock, &in_reduction_data,
-          &legend, &observation_id, &reduction_names, &subfile_name,
-          &write_to_disk
-        ](const gsl::not_null<
-              db::item_type<Tags::ReductionData<ReductionDatums...>>*>
-              reduction_data,
-          const gsl::not_null<
-              std::unordered_map<ObservationId, std::vector<std::string>>*>
-              reduction_names_map,
-          const gsl::not_null<
-              std::unordered_map<observers::ObservationId, size_t>*>
-              reduction_observers_contributed,
-          const gsl::not_null<CmiNodeLock*> reduction_file_lock) noexcept {
+        [&cache, &expected_calls_from_this_node,
+         &expected_calls_from_other_nodes, &file_lock, &in_reduction_data,
+         &legend, &observation_id, &reduction_names, &subfile_name,
+         &write_to_disk](
+            const gsl::not_null<
+                db::item_type<Tags::ReductionData<ReductionDatums...>>*>
+                reduction_data,
+            const gsl::not_null<
+                std::unordered_map<ObservationId, std::vector<std::string>>*>
+                reduction_names_map,
+            const gsl::not_null<
+                std::unordered_map<observers::ObservationId, size_t>*>
+                reduction_observers_contributed,
+            const gsl::not_null<CmiNodeLock*> reduction_file_lock) noexcept {
           auto& contribute_count =
               (*reduction_observers_contributed)[observation_id];
           const auto node_id = Parallel::my_node();
@@ -498,8 +497,8 @@ struct PrintTimeInfo {
           if (UNLIKELY(node_id == 0 and expected_calls_from_other_nodes == 0 and
                        expected_calls_from_this_node == 1)) {
             // Here this Action will be called only once, so we take
-            // a shortcut and just write to disk.
-            write_to_disk = true;
+            // a shortcut and just print.
+            printing = true;
             file_lock = *reduction_file_lock;
             legend = std::move(reduction_names_map->operator[](observation_id));
             reduction_names_map->erase(observation_id);
@@ -551,7 +550,7 @@ struct PrintTimeInfo {
         });
     Parallel::unlock(node_lock);
 
-    if (write_to_disk) {
+    if (printing) {
       Parallel::lock(&file_lock);
       in_reduction_data.finalize();
       PrintTimeInfo::write_data(
