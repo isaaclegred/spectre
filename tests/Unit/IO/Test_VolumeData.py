@@ -37,14 +37,15 @@ class TestIOH5VolumeData(unittest.TestCase):
         observation_ids = [8435087234, 6785087234]
         observation_values = [7.0, 1.3]
         grid_names = ["[[2,3,4]]", "[[5,6,7]]"]
-
         # Insert .vol file to h5 file
         h5_file.insert_vol("/element_data", 0)
         vol_file = h5_file.get_vol(path="/element_data")
         # Set TensorComponent and ExtentsAndTensorVolumeData to
         # be written
-        extents_and_tensor_vol_obs1 = [
-            ds.ExtentsAndTensorVolumeData([2, 2, 2], [
+        basis = ds.Legendre
+        quad = ds.Gauss
+        element_vol_obs1 = [
+            ds.ElementVolumeData([2, 2, 2], [
                 ds.TensorComponent(grid_names[0] + "/S",
                                    self.tensor_components_and_coords[0]),
                 ds.TensorComponent(grid_names[0] + "/x-coord",
@@ -58,12 +59,13 @@ class TestIOH5VolumeData(unittest.TestCase):
                 ds.TensorComponent(grid_names[0] + "/T_y",
                                    self.tensor_components_and_coords[5]),
                 ds.TensorComponent(grid_names[0] + "/T_z",
-                                   self.tensor_components_and_coords[6])
-            ]) for observation_value in observation_values
+                                   tensor_components_and_coords[6])
+            ], [basis, basis, basis], [quad, quad, quad])
+            for observation_value in observation_values
         ]
 
-        extents_and_tensor_vol_obs2 = [
-            ds.ExtentsAndTensorVolumeData([2, 2, 2], [
+        element_vol_obs2 = [
+            ds.ElementVolumeData([2, 2, 2], [
                 ds.TensorComponent(grid_names[1] + "/S",
                                    self.tensor_components_and_coords[0]),
                 ds.TensorComponent(grid_names[1] + "/x-coord",
@@ -77,17 +79,17 @@ class TestIOH5VolumeData(unittest.TestCase):
                 ds.TensorComponent(grid_names[1] + "/T_y",
                                    self.tensor_components_and_coords[4]),
                 ds.TensorComponent(grid_names[1] + "/T_z",
-                                   self.tensor_components_and_coords[5])
-            ]) for observation_value in observation_values
+                                   tensor_components_and_coords[5])
+            ], [basis, basis, basis], [quad, quad, quad])
+            for observation_value in observation_values
         ]
         # Write extents and tensor volume data to volfile
-        vol_file.write_volume_data(
-            observation_ids[0], observation_values[0],
-            [extents_and_tensor_vol_obs1[0], extents_and_tensor_vol_obs2[0]])
-        vol_file.write_volume_data(
-            observation_ids[1], observation_values[1],
-            [extents_and_tensor_vol_obs1[1], extents_and_tensor_vol_obs2[1]])
-        self.h5_file = h5_file
+
+        vol_file.write_volume_data(observation_ids[0], observation_values[0],
+                                   [element_vol_obs1[0], element_vol_obs2[0]])
+        vol_file.write_volume_data(observation_ids[1], observation_values[1],
+                                   [element_vol_obs1[1], element_vol_obs2[1]])
+        self.h5_file_r = h5_file
 
     def tearDown(self):
         if os.path.isfile(self.file_name):
@@ -141,6 +143,13 @@ class TestIOH5VolumeData(unittest.TestCase):
         extents = vol_file.get_extents(observation_id=obs_id)
         expected_extents = [[2, 2, 2], [2, 2, 2]]
         self.assertEqual(extents, expected_extents)
+        bases = vol_file.get_bases(observation_id=obs_id)
+        expected_bases = [["Legendre", "Legendre", "Legendre"],
+                          ["Legendre", "Legendre", "Legendre"]]
+        self.assertEqual(bases, expected_bases)
+        quadratures = vol_file.get_quadratures(observation_id=obs_id)
+        expected_quadratures = [["Gauss", "Gauss", "Gauss"],
+                                ["Gauss", "Gauss", "Gauss"]]
         h5_file.close()
 
     # Test that the tensor components, and tensor data  are retrieved correctly

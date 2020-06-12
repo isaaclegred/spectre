@@ -30,7 +30,9 @@ void bind_h5vol(py::module& m) {  // NOLINT
            py::arg("observation_id"), py::arg("tensor_component"))
       .def("get_extents", &h5::VolumeData::get_extents,
            py::arg("observation_id"))
-    .def("get_quadratures", &h5::VolumeData::get_quadratures)
-    .def("get_bases", &h5::VolumeData::get_bases);
+    .def("get_quadratures", &h5::VolumeData::get_quadratures,
+           py::arg("observation_id"))
+    .def("get_bases", &h5::VolumeData::get_bases,
+           py::arg("observation_id"));
 }
 }  // namespace py_bindings
