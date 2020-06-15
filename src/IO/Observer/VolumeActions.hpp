@@ -75,14 +75,13 @@ struct ContributeVolumeData {
                         received_quadrature) noexcept {
     db::mutate<Tags::TensorData>(
         make_not_null(&box),
-        [
-          &cache, &observation_id, &array_component_id, &received_extents,
-          &received_basis, &received_quadrature,
-          received_tensor_data = std::move(in_received_tensor_data),
-          &subfile_name
-        ](const gsl::not_null<db::item_type<Tags::TensorData>*> volume_data,
-          const std::unordered_set<ArrayComponentId>&
-              volume_component_ids) mutable noexcept {
+        [&cache, &observation_id, &array_component_id, &received_extents,
+         &received_basis, &received_quadrature,
+         received_tensor_data = std::move(in_received_tensor_data),
+         &subfile_name](
+            const gsl::not_null<db::item_type<Tags::TensorData>*> volume_data,
+            const std::unordered_set<ArrayComponentId>&
+                volume_component_ids) mutable noexcept {
           if (volume_data->count(observation_id) == 0 or
               volume_data->at(observation_id).count(array_component_id) == 0) {
             std::vector<size_t> extents(received_extents.begin(),
@@ -153,25 +152,23 @@ struct ContributeVolumeDataToWriter {
     // This is the number of callers that have registered (that are associated
     // with the observation type of this observation_id).
     // We expect that this Action will be called once by each of them.
-    const auto expected_number_of_calls = [&box, &observation_id ]() noexcept {
+    const auto expected_number_of_calls = [&box, &observation_id]() noexcept {
       const auto hash = observation_id.observation_type_hash();
       const auto& registered = db::get<Tags::VolumeObserversRegistered>(box);
       return (registered.count(hash) == 1) ? registered.at(hash).size() : 0;
-    }
-    ();
+    }();
     db::mutate<Tags::TensorData, Tags::VolumeObserversContributed>(
         make_not_null(&box),
-        [
-          &cache, &expected_number_of_calls, &observation_id,
-          in_volume_data = std::move(in_volume_data), &subfile_name
-        ](const gsl::not_null<
-              std::unordered_map<observers::ObservationId,
-                                 std::unordered_map<observers::ArrayComponentId,
-                                                    ElementVolumeData>>*>
-              volume_data,
-          const gsl::not_null<
-              std::unordered_map<observers::ObservationId, size_t>*>
-              volume_observers_contributed) mutable noexcept {
+        [&cache, &expected_number_of_calls, &observation_id,
+         in_volume_data = std::move(in_volume_data), &subfile_name](
+            const gsl::not_null<std::unordered_map<
+                observers::ObservationId,
+                std::unordered_map<observers::ArrayComponentId,
+                                   ElementVolumeData>>*>
+                volume_data,
+            const gsl::not_null<
+                std::unordered_map<observers::ObservationId, size_t>*>
+                volume_observers_contributed) mutable noexcept {
           if (volume_data->count(observation_id) == 0) {
             // We haven't been called before on this processing element.
             volume_data->operator[](observation_id) = std::move(in_volume_data);
@@ -218,10 +215,11 @@ struct WriteVolumeData {
     Parallel::lock(node_lock);
     std::unordered_map<observers::ArrayComponentId, ElementVolumeData>
         volume_data{};
+    // NOLINTNEXTLINE(cppcoreguidelines-init-variables)
     CmiNodeLock file_lock;
     db::mutate<Tags::H5FileLock, Tags::TensorData>(
         make_not_null(&box),
-        [&observation_id, &file_lock, &volume_data ](
+        [&observation_id, &file_lock, &volume_data](
             const gsl::not_null<CmiNodeLock*> in_file_lock,
             const gsl::not_null<db::item_type<Tags::TensorData>*>
                 in_volume_data) noexcept {

@@ -173,7 +173,7 @@ SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
     // clang-tidy consider pre-allocating the vector capacity
     auto target_bases = [&bases]() {
       std::vector<std::vector<std::string>> local_target_bases;
-      for (auto element_bases : bases) {
+      for (const auto& element_bases : bases) {
         std::vector<std::string> axis_bases;
         for (auto axis_basis : element_bases) {
           axis_bases.emplace_back(MakeString{} << axis_basis);  // NOLINT
@@ -185,7 +185,7 @@ SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
     std::sort(target_bases.begin(), target_bases.end(), std::less<>{});
     auto target_quadratures = [&quadratures]() {
       std::vector<std::vector<std::string>> local_target_quadratures;
-      for (auto element_quadratures : quadratures) {
+      for (const auto& element_quadratures : quadratures) {
         std::vector<std::string> axis_quadratures;
         for (auto axis_quadrature : element_quadratures) {
           // NOLINTNEXTLINE
