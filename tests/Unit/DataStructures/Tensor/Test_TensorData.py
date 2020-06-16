@@ -29,7 +29,7 @@ class TestTensorData(unittest.TestCase):
         self.assertEqual(str(tc3), "(tensor component, (1.5,1.1))")
 
     # Tests for ExtentsAndTensorVolumeData functions
-    def test_extents_and_tensor_components(self):
+    def test_extents_and_tensor_volume_data(self):
         # Test extents
         tc1 = TensorComponent("tensor component one", DataVector([1.5, 1.1]))
         tc2 = TensorComponent("tensor component two", DataVector([7.1, 5]))
