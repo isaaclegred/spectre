@@ -10,7 +10,7 @@ spectre_python_add_module(
   Bindings.cpp
   DataVector.cpp
   Matrix.cpp
-  TensorData.cpp
+  ${CMAKE_SOURCE_DIR}/src/DataStructures/Tensor/Python/TensorData.cpp
   )
 
 spectre_python_link_libraries(

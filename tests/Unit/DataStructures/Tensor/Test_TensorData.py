@@ -11,49 +11,52 @@ import numpy.testing as npt
 
 class TestTensorData(unittest.TestCase):
     # Tests for TensorComponent functions
-    def test_get_name(self):
-        tc = TensorComponent("tensor component", DataVector(1.0, 1.1))
-        self.assertEqual(tc.get_name(), "tensor component")
+    def test_tensor_component(self):
+        # Test name
+        tc1 = TensorComponent("tensor component", DataVector([1.5, 1.1]))
+        self.assertEqual(tc1.name, "tensor component")
+        tc1.name = "new tensor component"
+        self.assertEqual(tc1.name, "new tensor component")
 
-    def test_set_name(self):
-        tc = TensorComponent("tensor component", DataVector(1.0, 1.1))
-        tc.set_name("new tensor component")
-        self.assertEqual(tc.get_name(), "new tensor component")
+        # Test data
+        tc2 = TensorComponent("tensor component", DataVector([1.5, 1.1]))
+        npt.assert_array_almost_equal(np.array(tc2.data), np.array([1.5, 1.1]))
+        tc2.data = DataVector([7.1, 5])
+        npt.assert_array_almost_equal(np.array(tc2.data), np.array([7.1, 5]))
 
-    def test_get_data(self):
-        tc = TensorComponent("tensor component", DataVector(1.0, 1.1))
-        self.assertEqual(tc.get_data(), [1.0, 1.1])
-
-    def test_set_data(self):
-        tc = TensorComponent("tensor component", DataVector(1.0, 1.1))
-        tc.set_data(7.1, 5)
-        self.assertEqual(tc.get_data(), [7.1, 5])
-
-    def test_string(self):
-        tc = TensorComponent("tensor component", DataVector(1.0, 1.1))
-        self.assertEqual(str(tc), "(tensor component, (1.0, 1.1))")
+        # Test string
+        tc3 = TensorComponent("tensor component", DataVector([1.5, 1.1]))
+        self.assertEqual(str(tc3), "(tensor component, (1.5,1.1))")
 
     # Tests for ExtentsAndTensorVolumeData functions
-    def test_get_extents(self):
-        tc1 = TensorComponent("tensor component one", DataVector(1.0, 1.1))
-        tc2 = TensorComponent("tensor component two", DataVector(7.1, 5))
-        etvd = ExtentsAndTensorVolumeData([1, 2, 3, 4], [tc1, tc2])
-        self.assertEqual(etvd.get_extents(), [1, 2, 3, 4])
+    def test_extents_and_tensor_components(self):
+        # Test extents
+        tc1 = TensorComponent("tensor component one", DataVector([1.5, 1.1]))
+        tc2 = TensorComponent("tensor component two", DataVector([7.1, 5]))
+        etvd1 = ExtentsAndTensorVolumeData([1, 2, 3, 4], [tc1, tc2])
+        self.assertEqual(etvd1.extents, [1, 2, 3, 4])
+        etvd1.extents = [5, 6, 7, 8]
+        self.assertEqual(etvd1.extents, [5, 6, 7, 8])
 
-    def test_set_extents(self):
-        etvd = ExtentsAndTensorVolumeData([], [])
-        etvd.set_extents([5, 6, 7, 8])
-        self.assertEqual(etvd.get_extents(), [5, 6, 7, 8])
+        # Test tensor components
+        tc3 = TensorComponent("tensor component three", DataVector([5.4, 8.2]))
+        tc4 = TensorComponent("tensor component four", DataVector([0.9, 4.3]))
+        etvd2 = ExtentsAndTensorVolumeData([1, 2, 3, 4], [tc1, tc2])
+        expected_tensor_components1 = [tc1, tc2]
+        for i in range(2):
+            self.assertEqual(etvd2.tensor_components[i].name,
+                             expected_tensor_components1[i].name)
+            npt.assert_array_almost_equal(etvd2.tensor_components[i].data,
+                             expected_tensor_components1[i].data)
 
-    def test_get_tensor_components(self):
-        tc1 = TensorComponent("tensor component one", DataVector(1.0, 1.1))
-        tc2 = TensorComponent("tensor component two", DataVector(7.1, 5))
-        etvd = ExtentsAndTensorVolumeData([1, 2, 3, 4], [tc1, tc2])
-        elf.assertEqual(etvd.get_tensor_components(), [tc1, tc2])
+        etvd2.tensor_components = [tc3, tc4]
+        expected_tensor_components2 = [tc3, tc4]
+        for i in range(2):
+            self.assertEqual(etvd2.tensor_components[i].name,
+                             expected_tensor_components2[i].name)
+            npt.assert_array_almost_equal(etvd2.tensor_components[i].data,
+                            expected_tensor_components2[i].data)
 
-    def test_set_tensor_components(self):
-        tc1 = TensorComponent("tensor component one", DataVector(1.0, 1.1))
-        tc2 = TensorComponent("tensor component two", DataVector(7.1, 5))
-        etvd = ExtentsAndTensorVolumeData([], [])
-        etvd.set_tensor_components([tc1, tc2])
-        self.assertEqual(etvd.get_tensor_components(), [tc1, tc2])
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)

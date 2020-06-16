@@ -8,7 +8,6 @@ set(LIBRARY_SOURCES
   Test_Slice.cpp
   Test_Tensor.cpp
   Test_TensorData.cpp
-  Test_TensorData.py
   )
 
 add_subdirectory(EagerMath)
@@ -21,7 +20,6 @@ add_test_library(
   "Boost::boost;DataStructures;ErrorHandling"
   )
 
-# [example_add_pybindings_test]
 spectre_add_python_bindings_test(
   "Unit.DataStructures.Tensor.Python.TensorData"
   Test_TensorData.py
