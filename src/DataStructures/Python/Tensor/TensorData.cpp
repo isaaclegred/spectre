@@ -12,6 +12,7 @@
 #include "DataStructures/Tensor/TensorData.hpp"
 #include "PythonBindings/BoundChecks.hpp"
 #include "Utilities/GetOutput.hpp"
+#include "Utilities/StdHelpers.hpp"
 
 namespace py = pybind11;
 
@@ -33,6 +34,17 @@ void bind_tensordata(py::module& m) {  // NOLINT
            py::arg("extents"), py::arg("components"))
       .def_readwrite("extents", &ExtentsAndTensorVolumeData::extents)
       .def_readwrite("tensor_components",
-                     &ExtentsAndTensorVolumeData::tensor_components);
+                     &ExtentsAndTensorVolumeData::tensor_components)
+      .def("__str__",
+           [](const ExtentsAndTensorVolumeData& etvd) {
+             std::string etvd_str = "(" + get_output(etvd.extents) + "," +
+                                    get_output(etvd.tensor_components) + ")";
+             return etvd_str;
+           })
+      .def("__repr__", [](const ExtentsAndTensorVolumeData& etvd) {
+        std::string etvd_str = "(" + get_output(etvd.extents) + "," +
+                               get_output(etvd.tensor_components) + ")";
+        return etvd_str;
+      });
 }
 }  // namespace py_bindings
