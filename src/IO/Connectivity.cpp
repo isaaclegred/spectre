@@ -10,41 +10,43 @@
 
 namespace vis {
 namespace detail {
-std::ostream& operator<<(std::ostream& os, const Topology& topology) noexcept {
+std::ostream& operator<<(std::ostream& os,
+                         const BasicTopology& topology) noexcept {
   switch (topology) {
-    case Topology::Line:
+    case BasicTopology::Line:
       return os << "Line";
-    case Topology::Quad:
+    case BasicTopology::Quad:
       return os << "Quad";
-    case Topology::Hexahedron:
+    case BasicTopology::Hexahedron:
       return os << "Hexahedron";
     // LCOV_EXCL_START
     default:
-      ERROR("Unknown value of Topology trying to be streamed");
+      ERROR("Unknown value of BasicTopology trying to be streamed");
       // LCOV_EXCL_STOP
   }
 }
 
-std::vector<CellInTopology> cells_in_i1(const size_t number_of_points_in_i1) {
+std::vector<CellInBasicTopology> cells_in_i1(
+    const size_t number_of_points_in_i1) {
   // The number of cells in an I1 with N collocation points is N-1. Each cell
   // goes from the ith to the i+1th collocation point. This is stored in a
   // vector.
-  std::vector<CellInTopology> result;
+  std::vector<CellInBasicTopology> result;
   result.reserve(number_of_points_in_i1 - 1);
   for (size_t i = 0; i < number_of_points_in_i1 - 1; ++i) {
-    result.emplace_back(Topology::Line, std::vector<size_t>{i, i + 1});
+    result.emplace_back(BasicTopology::Line, std::vector<size_t>{i, i + 1});
   }
   return result;
 }
 
-std::vector<CellInTopology> tensor_product_cells(
-    const std::vector<CellInTopology>& first_topology_cells,
+std::vector<CellInBasicTopology> tensor_product_cells(
+    const std::vector<CellInBasicTopology>& first_topology_cells,
     const size_t first_topology_cells_size,
-    const std::vector<CellInTopology>& second_topology_cells) {
+    const std::vector<CellInBasicTopology>& second_topology_cells) {
   // first_topology_cells_size is the number of cells plus one in the topology.
   // For an I1 topology it is the number of grid points. Passing it in
   // separately allows easier generalization to other topologies such as S2.
-  std::vector<CellInTopology> result;
+  std::vector<CellInBasicTopology> result;
   for (const auto& first_cells : first_topology_cells) {
     for (const auto& second_cells : second_topology_cells) {
       const std::vector<size_t>& first_bounding_indices =
@@ -61,19 +63,19 @@ std::vector<CellInTopology> tensor_product_cells(
             return bounding_computed;
           }(second_cells.bounding_indices);
 
-      if (first_cells.topology == Topology::Line and
-          second_cells.topology == Topology::Line) {
+      if (first_cells.topology == BasicTopology::Line and
+          second_cells.topology == BasicTopology::Line) {
         result.emplace_back(
-            Topology::Quad,
+            BasicTopology::Quad,
             std::vector<size_t>{
                 first_bounding_indices[0] + second_bounding_indices[0],
                 first_bounding_indices[1] + second_bounding_indices[0],
                 first_bounding_indices[1] + second_bounding_indices[1],
                 first_bounding_indices[0] + second_bounding_indices[1]});
-      } else if (first_cells.topology == Topology::Line and
-                 second_cells.topology == Topology::Quad) {
+      } else if (first_cells.topology == BasicTopology::Line and
+                 second_cells.topology == BasicTopology::Quad) {
         result.emplace_back(
-            Topology::Hexahedron,
+            BasicTopology::Hexahedron,
             std::vector<size_t>{
                 first_bounding_indices[0] + second_bounding_indices[0],
                 first_bounding_indices[1] + second_bounding_indices[0],
@@ -97,9 +99,10 @@ std::vector<CellInTopology> tensor_product_cells(
 }
 
 template <size_t Dim>
-std::vector<CellInTopology> compute_cells(const Index<Dim>& extents) noexcept {
-  std::vector<CellInTopology> cells;
-  std::vector<std::vector<CellInTopology>> cells_per_topology;
+std::vector<CellInBasicTopology> compute_cells(
+    const Index<Dim>& extents) noexcept {
+  std::vector<CellInBasicTopology> cells;
+  std::vector<std::vector<CellInBasicTopology>> cells_per_topology;
   std::vector<size_t> size_per_topology;
   // Compute the number of cells in each topology and the number of extents
   // The extents are copied since this will need generalization for other
@@ -118,7 +121,7 @@ std::vector<CellInTopology> compute_cells(const Index<Dim>& extents) noexcept {
   return cells;
 }
 
-std::vector<CellInTopology> compute_cells(
+std::vector<CellInBasicTopology> compute_cells(
     const std::vector<size_t>& extents) noexcept {
   if (extents.size() == 1) {
     return compute_cells(Index<1>{extents[0]});
@@ -134,11 +137,11 @@ std::vector<CellInTopology> compute_cells(
 }
 
 // Explicit instantiations
-template std::vector<CellInTopology> compute_cells<1>(
+template std::vector<CellInBasicTopology> compute_cells<1>(
     const Index<1>& extents) noexcept;
-template std::vector<CellInTopology> compute_cells<2>(
+template std::vector<CellInBasicTopology> compute_cells<2>(
     const Index<2>& extents) noexcept;
-template std::vector<CellInTopology> compute_cells<3>(
+template std::vector<CellInBasicTopology> compute_cells<3>(
     const Index<3>& extents) noexcept;
 }  // namespace detail
 }  // namespace vis
