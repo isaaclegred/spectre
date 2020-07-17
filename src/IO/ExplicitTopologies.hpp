@@ -13,16 +13,26 @@
 namespace vis::detail {
 template <size_t Dim>
 Sphere public : TopologicalSpace{};
+  
+template<>
+class Sphere<1>;
 
-Sphere<1>;
-Sphere<2>;
-Sphere<3>;
+template<>
+class Sphere<2>;
+
+template<>
+class Sphere<3>;
 
 template <size_t Dim>
 Torus public : TopologicalSpace{};
 
-Torus<1>;
-Torus<2>;
-Torus<3>;
+template<>
+class Torus<1>;
+
+template<>
+class Torus<2>;
+
+template<>
+class Torus<3>;
 
 }  // namespace vis::detail
