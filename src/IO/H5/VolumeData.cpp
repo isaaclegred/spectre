@@ -16,6 +16,7 @@
 #include "ErrorHandling/Assert.hpp"
 #include "ErrorHandling/Error.hpp"
 #include "IO/Connectivity.hpp"
+#include "IO/ExplicitTopologies.hpp"
 #include "IO/H5/AccessType.hpp"
 #include "IO/H5/Header.hpp"
 #include "IO/H5/Helpers.hpp"
@@ -33,7 +34,8 @@ void append_element_extents_and_connectivity(
     const gsl::not_null<std::vector<size_t>*> total_extents,
     const gsl::not_null<std::vector<int>*> total_connectivity,
     const gsl::not_null<int*> total_points_so_far, const size_t dim,
-    const ExtentsAndTensorVolumeData& element) noexcept {
+    const ExtentsAndTensorVolumeData& element, bool trivial_top
+                                             ) noexcept {
   // Process the element extents
   const auto& extents = element.extents;
   if (extents.size() != dim) {
@@ -48,24 +50,41 @@ void append_element_extents_and_connectivity(
   // Generate the connectivity data for the element
   // Possible optimization: local_connectivity.reserve(BLAH) if we can figure
   // out size without computing all the connectivities.
+  //================================================
+  // In practice this should be replaced with the topology coming out of the
+  // element
+  //================================================
+  vis::detail::Topology top;
+  switch (dim){
+  case 1: top = trivial_top ? vis::detail::Topology::E1 :
+    vis::detail::Topology::S1; break;  
+  case 2: top = trivial_top ? vis::detail::Topology::E2 :
+    vis::detail::Topology::S2; break; 
+  case 3: top = trivial_top ? vis::detail::Topology::E3 :
+    vis::detail::Topology::S3; break;
+  default : ERROR("Topology is not writable"); 
+  }
+  
+  vis::detail::TopologicalSpace topology = space_from_tag(top, extents);
+  //================================================= 
   const std::vector<int> connectivity =
-      [&extents, &total_points_so_far ]() noexcept {
+    [&topology , &total_points_so_far]() noexcept {
     std::vector<int> local_connectivity;
-    for (const auto& cell : vis::detail::compute_cells(extents)) {
+    for (const auto& cell : vis::detail::compute_cells(topology)) {
       for (const auto& bounding_indices : cell.bounding_indices) {
         local_connectivity.emplace_back(*total_points_so_far +
                                         static_cast<int>(bounding_indices));
       }
     }
     return local_connectivity;
-  }
+    }
   ();
   *total_points_so_far += element_num_points;
   total_connectivity->insert(total_connectivity->end(), connectivity.begin(),
                              connectivity.end());
 }
 
-// Append the name of an element to the string of grid names
+  // Append the name of an element to the string of grid names
 void append_element_name(const gsl::not_null<std::string*> grid_names,
                          const ExtentsAndTensorVolumeData& element) noexcept {
   // Get the name of the element
@@ -119,7 +138,8 @@ VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
 // an `observation_group` in a `VolumeData` file.
 void VolumeData::write_volume_data(
     const size_t observation_id, const double observation_value,
-    const std::vector<ExtentsAndTensorVolumeData>& elements) noexcept {
+    const std::vector<ExtentsAndTensorVolumeData>& elements, bool trivial_top
+                                   ) noexcept {
   const std::string path = "ObservationId" + std::to_string(observation_id);
   detail::OpenGroup observation_group(volume_data_group_.id(), path,
                                       AccessType::ReadWrite);
@@ -171,7 +191,7 @@ void VolumeData::write_volume_data(
         append_element_name(&grid_names, element);
         append_element_extents_and_connectivity(
             &total_extents, &total_connectivity, &total_points_so_far, dim,
-            element);
+            element, trivial_top);
       }
       const DataVector& tensor_data_on_grid = element.tensor_components[i].data;
       contiguous_tensor_data.insert(contiguous_tensor_data.end(),

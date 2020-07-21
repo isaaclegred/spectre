@@ -11,28 +11,42 @@
 #include "Connectivity.hpp"
 
 namespace vis::detail {
-template <size_t Dim>
-Sphere public : TopologicalSpace{};
-  
-template<>
+
+TopologicalSpace space_from_tag(Topology top, std::vector<size_t> extents);
+
+template<size_t dim>
+class Sphere : public  TopologicalSpace{
+public:
+  Sphere(std::vector<size_t> in_extents) : TopologicalSpace(in_extents){};
+  std::vector<CellInTopology> topology_cells();
+
+};
+
+template 
 class Sphere<1>;
 
-template<>
+template
 class Sphere<2>;
-
-template<>
+  
+template
 class Sphere<3>;
 
-template <size_t Dim>
-Torus public : TopologicalSpace{};
 
-template<>
-class Torus<1>;
+template<size_t dim>
+class Euclidean :  public TopologicalSpace{
+public:
+  Euclidean(std::vector<size_t> in_extents) : TopologicalSpace(in_extents){};
+  std::vector<CellInTopology> topology_cells();
+};
 
-template<>
-class Torus<2>;
+template
+class Euclidean<1>;
 
-template<>
-class Torus<3>;
+template
+class Euclidean<2>;
+
+template
+class Euclidean<3>;
+
 
 }  // namespace vis::detail
