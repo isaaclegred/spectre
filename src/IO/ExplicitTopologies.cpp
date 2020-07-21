@@ -11,10 +11,10 @@
 #include "Connectivity.hpp"
 
 namespace vis::detail {
-std::vector<CellInTopology> glue_along_dimension(
-    std::vector<CellInTopology> input) {}
 
-std::vector<CellInTopolgy> Sphere<1>::compute_cells() {
+
+  
+std::vector<CellInTopolgy> Sphere<1>::compute_topology() {
   size_t num_points = extents[0];
   if (num_points < 2) {
     ERROR("Constructing a 1-sphere requires at least 2 points")
@@ -26,7 +26,8 @@ std::vector<CellInTopolgy> Sphere<1>::compute_cells() {
   return basic_cells;
 }
 
-std::vector<CellInTopolgy> Sphere<2>::compute_cells() {
+template<>
+std::vector<CellInTopolgy> Sphere<2>::compute_topology() {
   size_t theta_pts = extents[0];
   size_t phi_pts = extents[1];
   if (theta_pts < 2 or phi_pts < 2) {
@@ -74,5 +75,33 @@ std::vector<CellInTopolgy> Sphere<2>::compute_cells() {
   }
   return result;
 }
+
+template<>
+std::vector<CellInTopolgy> Euclidean<1>::compute_topology(){
+  return vis::detail::compute_cells(extents);
+}
+
+template<>
+std::vector<CellInTopolgy> Euclidean<2>::compute_topology(){
+  return vis::detail::compute_cells(extents);
+}
+
+template<>
+std::vector<CellInTopolgy> Euclidean<3>::compute_topology(){
+  return vis::detail::compute_cells(extents);}
+
+TopologicalSpace space_from_tag(constTopology& top, const std::vector<size_t>&
+                                extents) noexcept {
+  TopologicalSpace* ptop;
+  switch(top){
+  case Topology::E1 : *ptop = Euclidean<1> (extents);
+  case Topology::E2 : *ptop = Euclidean<2> (extents);
+  case Topology::E3 : *ptop =  Euclidean<3> (extents);  
+  case Topology::S1 : *ptop = Sphere<1> (extents);
+  case Topology::S2 : *ptop = Sphere<2> (extents);
+  case Topology::S3 : *ptop = Sphere<3> (extents);  
+  }
+};
+
 
 }  // namespace vis::detail

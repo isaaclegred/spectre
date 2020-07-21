@@ -718,7 +718,7 @@ SPECTRE_TEST_CASE("Unit.IO.H5.OpenGroupMove", "[Unit][IO][H5]") {
 }
 
 SPECTRE_TEST_CASE("Unit.IO.H5.TopologyStreams", "[Unit][IO][H5]") {
-  CHECK(get_output(vis::detail::Topology::Line) == "Line"s);
-  CHECK(get_output(vis::detail::Topology::Quad) == "Quad"s);
-  CHECK(get_output(vis::detail::Topology::Hexahedron) == "Hexahedron"s);
+  CHECK(get_output(vis::detail::BasicTopology::Line) == "Line"s);
+  CHECK(get_output(vis::detail::BasicTopology::Quad) == "Quad"s);
+  CHECK(get_output(vis::detail::BasicTopology::Hexahedron) == "Hexahedron"s);
 }

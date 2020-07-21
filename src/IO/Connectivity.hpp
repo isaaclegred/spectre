@@ -33,22 +33,9 @@ namespace detail {
  */
 enum class BasicTopology { Line, Quad, Hexahedron };
 
-template <size_t Dim>
-class TopologicalSpace {
- public:
-  TopologicalSpace() = default;
-  TopologicalSpace(const TopologicalSpace& /*rhs*/) = default;
-  TopologicalSpace(TopologicalSpace&& /*rhs*/) = default;
-  TopologicalSpace operator=(const TopologicalSpace& /*rhs*/) = default;
-  TopologicalSpace operator=(TopologicalSpace&& /*rhs*/) = default;
+enum class Topology {S1, S2, S3, E1, E2, E3};
 
-  // Generalized notion of extents (I guess ultimately based on maps to R^n)
-  std::array<size_t, Dim> extents{};
-  ~TopologicalSpace() = default;
-  virtual std::Vector<CellInBasicTopology> compute_cells() = 0;
-};
-
-std::ostream& operator<<(std::ostream& os, const Topology& topology) noexcept;
+std::ostream& operator<<(std::ostream& os, const BasicTopology& topology) noexcept;
 
 /*!
  * \brief Represents the number of cells in a particular topology
@@ -74,7 +61,21 @@ struct CellInBasicTopology {
 };
 
 using CellInTopology = CellInBasicTopology;
+  
+class TopologicalSpace {
+public:
+  TopologicalSpace(std::vector<size_t> in_extents) : extents(in_extents){};
+  
+  // Generalized notion of extents (I guess ultimately based on maps to R^n)
+  std::vector<size_t> extents{};
+  virtual ~TopologicalSpace() = default;
+  virtual std::vector<CellInBasicTopology> compute_topology() const noexcept;
+  virtual Topology tag();
+  
+    
+};
 
+  
 // @{
 /*!
  * \brief Compute the cells in the element.
@@ -95,7 +96,8 @@ std::vector<CellInBasicTopology> compute_cells(
 std::vector<CellInBasicTopology> compute_cells(
     const std::vector<size_t>& extents) noexcept;
 
-std::vector<CellInTopology> compute_cells(const TopologicalSpace&) noexcept;
+
+std::vector<CellInTopology> compute_cells(const TopologicalSpace& topology) noexcept;
 
 // @}
 }  // namespace detail

@@ -143,5 +143,18 @@ template std::vector<CellInBasicTopology> compute_cells<2>(
     const Index<2>& extents) noexcept;
 template std::vector<CellInBasicTopology> compute_cells<3>(
     const Index<3>& extents) noexcept;
+
+std::vector<CellInTopology> compute_cells(const TopologicalSpace& topology) noexcept{
+  return topology.compute_topology();
+  }
+
+
+ 
+
+//Default implementation  
+std::vector<CellInTopology> TopologicalSpace::compute_topology() const noexcept{
+  return compute_cells(extents);
+}
+  
 }  // namespace detail
 }  // namespace vis
