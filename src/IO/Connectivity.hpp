@@ -12,16 +12,6 @@
 #include <vector>  // Distributed under the MIT License.
 // See LICENSE.txt for details.
 
-/// \file
-/// Defines functions for computing the connectivity of an element
-
-#pragma once
-
-#include <cstddef>
-#include <ostream>
-#include <utility>
-#include <vector>
-
 template <size_t Dim>
 class Index;
 
@@ -70,7 +60,6 @@ public:
   std::vector<size_t> extents{};
   virtual ~TopologicalSpace() = default;
   virtual std::vector<CellInBasicTopology> compute_topology() const noexcept;
-  virtual Topology tag();
   
     
 };

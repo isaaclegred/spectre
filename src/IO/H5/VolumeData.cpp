@@ -65,7 +65,7 @@ void append_element_extents_and_connectivity(
   default : ERROR("Topology is not writable"); 
   }
   
-  vis::detail::TopologicalSpace topology = space_from_tag(top, extents);
+  auto topology = vis::detail::space_from_tag(top, extents);
   //================================================= 
   const std::vector<int> connectivity =
     [&topology , &total_points_so_far]() noexcept {

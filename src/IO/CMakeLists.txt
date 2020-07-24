@@ -7,7 +7,7 @@ add_spectre_library(${LIBRARY})
 
 spectre_target_sources(
   ${LIBRARY}
-  PRIVATE
+  PUBLIC
   Connectivity.cpp
   ExplicitTopologies.cpp
   )
