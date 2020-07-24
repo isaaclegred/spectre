@@ -50,3 +50,4 @@ class Euclidean<3>;
 
 
 }  // namespace vis::detail
+
