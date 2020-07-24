@@ -18,7 +18,7 @@ template<size_t dim>
 class Sphere : public  TopologicalSpace{
 public:
   Sphere(std::vector<size_t> in_extents) : TopologicalSpace(in_extents){};
-  std::vector<CellInTopology> topology_cells();
+  std::vector<CellInTopology> compute_topology();
 
 };
 
@@ -36,7 +36,7 @@ template<size_t dim>
 class Euclidean :  public TopologicalSpace{
 public:
   Euclidean(std::vector<size_t> in_extents) : TopologicalSpace(in_extents){};
-  std::vector<CellInTopology> topology_cells();
+  std::vector<CellInTopology> compute_topology();
 };
 
 template

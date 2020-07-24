@@ -9,6 +9,7 @@ spectre_target_sources(
   ${LIBRARY}
   PRIVATE
   Connectivity.cpp
+  ExplicitTopologies.cpp
   )
 
 spectre_target_headers(
@@ -16,6 +17,7 @@ spectre_target_headers(
   INCLUDE_DIRECTORY ${CMAKE_SOURCE_DIR}/src
   HEADERS
   Connectivity.hpp
+  ExplicitTopologies.hpp
   )
 
 target_link_libraries(
