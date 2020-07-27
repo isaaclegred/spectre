@@ -25,6 +25,7 @@
 #include "Utilities/Literals.hpp"
 #include "Utilities/Numeric.hpp"
 
+#include "Parallel/Printf.hpp"
 /// \cond HIDDEN_SYMBOLS
 namespace h5 {
 namespace {
@@ -54,19 +55,22 @@ void append_element_extents_and_connectivity(
   // In practice this should be replaced with the topology coming out of the
   // element
   //================================================
-  vis::detail::Topology top;
-  switch (dim){
-  case 1: top = trivial_top ? vis::detail::Topology::E1 :
-    vis::detail::Topology::S1; break;  
-  case 2: top = trivial_top ? vis::detail::Topology::E2 :
-    vis::detail::Topology::S2; break; 
-  case 3: top = trivial_top ? vis::detail::Topology::E3 :
-    vis::detail::Topology::S3; break;
-  default : ERROR("Topology is not writable"); 
-  }
-  
+  Parallel::printf("Must have failed here");
+  vis::detail::Topology top = vis::detail::Topology::E3;
+  Parallel::printf("Got the topology thing");
+  //switch (dim){
+  // case 1: top = trivial_top ? vis::detail::Topology::E1 :
+  //   vis::detail::Topology::S1; break;  
+  // case 2: top = trivial_top ? vis::detail::Topology::E2 :
+  //   vis::detail::Topology::S2; break; 
+  // case 3: top = trivial_top ? vis::detail::Topology::E3 :
+  //   vis::detail::Topology::S3; break;
+  // default : ERROR("Topology is not writable"); 
+  // }
+  Parallel::printf("Got the tag");
   auto topology = vis::detail::space_from_tag(top, extents);
   //================================================= 
+  Parallel::printf("Certisnly failed by here \n");
   const std::vector<int> connectivity =
     [&topology , &total_points_so_far]() noexcept {
     std::vector<int> local_connectivity;
@@ -138,8 +142,9 @@ VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
 // an `observation_group` in a `VolumeData` file.
 void VolumeData::write_volume_data(
     const size_t observation_id, const double observation_value,
-    const std::vector<ExtentsAndTensorVolumeData>& elements, bool trivial_top
+    const std::vector<ExtentsAndTensorVolumeData>& elements 
                                    ) noexcept {
+  bool trivial_top = true;
   const std::string path = "ObservationId" + std::to_string(observation_id);
   detail::OpenGroup observation_group(volume_data_group_.id(), path,
                                       AccessType::ReadWrite);
@@ -151,6 +156,7 @@ void VolumeData::write_volume_data(
   }
   h5::write_to_attribute(observation_group.id(), "observation_value",
                          observation_value);
+  Parallel::printf("Made it into the write_volume_data function"); 
   // Get first element to extract the component names and dimension
   const auto get_component_name = [](const auto& component) noexcept {
     ASSERT(component.name.find_last_of('/') != std::string::npos,

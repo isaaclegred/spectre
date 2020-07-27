@@ -52,17 +52,6 @@ struct CellInBasicTopology {
 
 using CellInTopology = CellInBasicTopology;
   
-class TopologicalSpace {
-public:
-  TopologicalSpace(std::vector<size_t> in_extents) : extents(in_extents){};
-  
-  // Generalized notion of extents (I guess ultimately based on maps to R^n)
-  std::vector<size_t> extents{};
-  virtual ~TopologicalSpace() = default;
-  virtual std::vector<CellInBasicTopology> compute_topology() const noexcept;
-  
-    
-};
 
   
 // @{
@@ -85,9 +74,22 @@ std::vector<CellInBasicTopology> compute_cells(
 std::vector<CellInBasicTopology> compute_cells(
     const std::vector<size_t>& extents) noexcept;
 
+class TopologicalSpace {
+public:
+  TopologicalSpace(std::vector<size_t> in_extents) : extents(in_extents){};
+  
+  // Generalized notion of extents (I guess ultimately based on maps to R^n)
+  virtual ~TopologicalSpace() = default;
+  std::vector<size_t> extents{};
+  virtual std::vector<CellInTopology> compute_topology() const noexcept {return compute_cells(extents);}
+  virtual Topology tag()const noexcept{return vis::detail::Topology::E3;}
+
+  
+    
+};
+
 
 std::vector<CellInTopology> compute_cells(const TopologicalSpace& topology) noexcept;
-
 // @}
 }  // namespace detail
 }  // namespace vis

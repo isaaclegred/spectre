@@ -15,11 +15,11 @@ namespace vis::detail {
 TopologicalSpace space_from_tag(const Topology& top, const std::vector<size_t>& extents) noexcept;
 
 template<size_t dim>
-class Sphere : public  TopologicalSpace{
+class Sphere : public TopologicalSpace{
 public:
   Sphere(std::vector<size_t> in_extents) : TopologicalSpace(in_extents){};
-  std::vector<CellInTopology> compute_topology();
-  Topology tag();
+  std::vector<CellInTopology> compute_topology() const noexcept;
+  Topology tag() const noexcept;
 };
 
 template 
@@ -36,8 +36,9 @@ template<size_t dim>
 class Euclidean :  public TopologicalSpace{
 public:
   Euclidean(std::vector<size_t> in_extents) : TopologicalSpace(in_extents){};
-  std::vector<CellInTopology> compute_topology();
-  Topology tag();
+  std::vector<CellInTopology> compute_topology() const noexcept;
+  Topology tag() const noexcept;
+
 };
 
 template
@@ -52,3 +53,4 @@ class Euclidean<3>;
 
 }  // namespace vis::detail
 
+ 

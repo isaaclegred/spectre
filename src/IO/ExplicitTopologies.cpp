@@ -10,11 +10,12 @@
 
 #include "Connectivity.hpp"
 #include "ErrorHandling/Error.hpp"
+#include "Parallel/Printf.hpp"
 namespace vis::detail {
 
 
 template<>  
-std::vector<CellInTopology> Sphere<1>::compute_topology() {
+std::vector<CellInTopology> Sphere<1>::compute_topology() const noexcept {
   size_t num_points = extents[0];
   if (num_points < 2) {
     ERROR("Constructing a 1-sphere requires at least 2 points");
@@ -27,10 +28,10 @@ std::vector<CellInTopology> Sphere<1>::compute_topology() {
 }
 
 template<>
-Topology Sphere<1>::tag(){return Topology::S1;}
+Topology Sphere<1>::tag() const noexcept{return Topology::S1;}
   
 template<>
-std::vector<CellInTopology> Sphere<2>::compute_topology() {
+std::vector<CellInTopology> Sphere<2>::compute_topology() const noexcept {
   size_t theta_pts = extents[0];
   size_t phi_pts = extents[1];
   if (theta_pts < 2 or phi_pts < 2) {
@@ -82,49 +83,49 @@ std::vector<CellInTopology> Sphere<2>::compute_topology() {
 }
 
 template<>
-Topology Sphere<2>::tag(){return Topology::S2;}
+Topology Sphere<2>::tag() const noexcept {return Topology::S2;}
   
 template<>
-std::vector<CellInTopology> Euclidean<1>::compute_topology(){
+std::vector<CellInTopology> Euclidean<1>::compute_topology() const noexcept {
   return vis::detail::compute_cells(extents);
 }
 template<>
-Topology Euclidean<1>::tag(){return Topology::E1;}
+Topology Euclidean<1>::tag() const noexcept {return Topology::E1;}
   
 template<>
-std::vector<CellInTopology> Euclidean<2>::compute_topology(){
+std::vector<CellInTopology> Euclidean<2>::compute_topology() const noexcept {
   return vis::detail::compute_cells(extents);
 }
 
 template<>
-Topology Euclidean<2>::tag(){return Topology::E2;}
+Topology Euclidean<2>::tag() const noexcept{return Topology::E2;}
   
 template<>
-std::vector<CellInTopology> Euclidean<3>::compute_topology(){
+std::vector<CellInTopology> Euclidean<3>::compute_topology() const noexcept{
   return vis::detail::compute_cells(extents);}
 
 
 template<>
-Topology Euclidean<3>::tag(){return Topology::E3;}
+Topology Euclidean<3>::tag() const noexcept {return Topology::E3;}
 
-TopologicalSpace space_from_tag(const Topology& top, const std::vector<size_t>&
+TopologicalSpace space_from_tag(const vis::detail::Topology& top, const std::vector<size_t>&
                                 extents) noexcept {
-  TopologicalSpace* ptop;
+  Parallel::printf("Getting the Euclidean<3>");
   switch(top){
-  case Topology::E1 : *ptop = Euclidean<1> (extents); break;
-  case Topology::E2 : *ptop = Euclidean<2> (extents); break;
-  case Topology::E3 : *ptop =  Euclidean<3> (extents); break;  
-  case Topology::S1 : *ptop = Sphere<1> (extents); break;
-  case Topology::S2 : *ptop = Sphere<2> (extents); break;
-  case Topology::S3 : *ptop = Sphere<3> (extents); break;
+  case Topology::E1 : return Euclidean<1> (extents);
+  case Topology::E2 : return  Euclidean<2> (extents);
+  case Topology::E3 : return Euclidean<3> (extents);  
+  case Topology::S1 : return Sphere<1> (extents);
+  case Topology::S2 : return Sphere<2> (extents);
+  case Topology::S3 : return  Sphere<3> (extents);
   default :  ERROR("Topology not known");
   }
-};
+}
   // Just need to have something to avoid linking errors
 template<>
-std::vector<CellInTopology> Sphere<3>::compute_topology() {return {};}
+std::vector<CellInTopology> Sphere<3>::compute_topology() const noexcept  {return {};}
 template<>
-Topology Sphere<3>::tag(){return Topology::S3;} 
+Topology Sphere<3>::tag() const noexcept {return Topology::S3;} 
 
 
   

@@ -149,12 +149,7 @@ std::vector<CellInTopology> compute_cells(const TopologicalSpace& topology) noex
   }
 
 
- 
 
-//Default implementation  
-std::vector<CellInTopology> TopologicalSpace::compute_topology() const noexcept{
-  return compute_cells(extents);
-}
-  
+
 }  // namespace detail
 }  // namespace vis
