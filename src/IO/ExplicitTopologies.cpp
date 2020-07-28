@@ -110,7 +110,6 @@ Topology Euclidean<3>::tag() const noexcept {return Topology::E3;}
 
 TopologicalSpace space_from_tag(const vis::detail::Topology& top, const std::vector<size_t>&
                                 extents) noexcept {
-  Parallel::printf("Getting the Euclidean<3>");
   switch(top){
   case Topology::E1 : return Euclidean<1> (extents);
   case Topology::E2 : return  Euclidean<2> (extents);
