@@ -10,6 +10,7 @@
 #include "DataStructures/DataVector.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "NumericalAlgorithms/RootFinding/NewtonRaphson.hpp"
+#include "NumericalAlgorithms/RootFinding/TOMS748.hpp"
 #include "PointwiseFunctions/Hydro/EquationsOfState/EquationOfState.hpp"
 #include "PointwiseFunctions/Hydro/EquationsOfState/Factory.hpp"
 #include "PointwiseFunctions/Hydro/SpecificEnthalpy.hpp"
@@ -475,20 +476,15 @@ double Enthalpy<LowDensityEoS>::rest_mass_density_from_enthalpy(
   } else {
     // Root-finding appropriate between reference density and maximum density
     // We can use x=0 and x=x_max as bounds
-    const auto f_df_lambda = [this, &specific_enthalpy](const double density) {
+    const auto f_lambda = [this, &specific_enthalpy](const double density) {
       const auto x = x_from_density(density);
       const double f =
           evaluate_coefficients(coefficients_, x) - specific_enthalpy;
-
-      const double df =
-          1.0 / density * evaluate_coefficients(derivative_coefficients_, x);
-      return std::make_pair(f, df);
+      return f;
     };
-    const size_t digits = 14;
-    const double intial_guess = 0.5 * (minimum_density_ + maximum_density_);
-    const auto root_from_lambda = RootFinder::newton_raphson(
-        f_df_lambda, intial_guess, reference_density_, maximum_density_,
-        digits);
+
+    const auto root_from_lambda = RootFinder::toms748(
+        f_lambda, minimum_density_, maximum_density_, 1.0e-8, 1.0e-8);
     return root_from_lambda;
   }
 }
