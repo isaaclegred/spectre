@@ -67,8 +67,13 @@ spectre_run_cmake() {
           -D CMAKE_BUILD_TYPE=Release \
           -D CMAKE_Fortran_COMPILER=gfortran \
           -D MEMORY_ALLOCATOR=SYSTEM \
-          -D BUILD_PYTHON_BINDINGS=ON \
-          -D MACHINE=Wheeler \
+          -D BUILD_PYTHON_BINDINGS=ON
+          -D MACHINE=Wheeler
+          -D CMAKE_PREFIX_PATH="$PYTHON_HOME" \
+          -D BOOTSTRAP_PY_DEPS=ON
+          -D CMAKE_PREFIX_PATH="$PYTHON_HOME" \
+          -D BOOTSTRAP_PY_DEPS=ON \
+          -D GoogleBenchmark_ROOT=/usr/local/google-benchmark/1.2\
           "$@" \
           $SPECTRE_HOME
 }

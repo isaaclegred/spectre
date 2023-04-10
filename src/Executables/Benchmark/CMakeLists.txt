@@ -20,6 +20,7 @@ if("${GoogleBenchmark_FOUND}" AND NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
     PRIVATE
     CoordinateMaps
     Domain
+    Hydro
     Informer
     GoogleBenchmark
     Spectral
