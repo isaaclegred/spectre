@@ -75,8 +75,9 @@ LinearSolver:
 RadiallyCompressedCoordinates: None
 
 EventsAndTriggers:
-  - - HasConverged
-    - - ObserveNorms:
+  - Trigger: HasConverged
+    Events:
+      - ObserveNorms:
           SubfileName: ErrorNorms
           TensorsToObserve:
             - Name: Error(Field)

@@ -97,8 +97,9 @@ LinearSolver:
     ObservePerCoreReductions: False
 
 EventsAndTriggers:
-  - - HasConverged
-    - - ObserveFields:
+  - Trigger: HasConverged
+    Events:
+      - ObserveFields:
           SubfileName: VolumeData
           VariablesToObserve:
             - Field
