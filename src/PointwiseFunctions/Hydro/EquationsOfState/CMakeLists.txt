@@ -13,6 +13,7 @@ spectre_target_sources(
   RegisterDerivedWithCharm.cpp
   Spectral.cpp
   Tabulated3d.cpp
+  AnalyticalThermal.cpp
   )
 
 spectre_target_headers(
@@ -30,6 +31,7 @@ spectre_target_headers(
   RegisterDerivedWithCharm.hpp
   Spectral.hpp
   Tabulated3d.hpp
+  AnalyticalThermal.hpp
   )
 
 add_subdirectory(Python)
