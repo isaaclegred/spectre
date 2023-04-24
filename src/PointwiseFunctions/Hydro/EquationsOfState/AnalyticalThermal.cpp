@@ -1,0 +1,346 @@
+// Distributed under the MIT License.
+// See LICENSE.txt for details.
+
+#include "PointwiseFunctions/Hydro/EquationsOfState/AnalyticalThermal.hpp"
+
+#include <cmath>
+#include <utility>
+
+#include "DataStructures/DataVector.hpp"
+#include "DataStructures/Tensor/Tensor.hpp"
+#include "NumericalAlgorithms/RootFinding/TOMS748.hpp"
+#include "PointwiseFunctions/Hydro/EquationsOfState/Factory.hpp"
+#include "Utilities/ConstantExpressions.hpp"
+namespace {
+// Find positive root of a polynomial, assuming there is exactly one
+double root_polynomial_positive(const std::vector<double>& coefficients,
+                                double lower_bound, double upper_bound) {
+  auto miss = [&coefficients](double x) {
+    return evaluate_polynomial(coefficients, x);
+  };
+  const auto root_from_lambda = RootFinder::toms748(
+      miss, 0.0, std::numeric_limits<double>::max(), 1.0e-14, 1.0e-15);
+  return root_from_lambda;
+}
+DataVector root_polynomial_positive(const std::vector<DataVector>& coefficients,
+                                    double lower_bound, double upper_bound) {
+  DataVector solutions = make_with_value<DataVector>(coefficients[0], 0.0);
+  for (size_t i = 0; i < solutions.size(); i++) {
+    std::vector<double> pointwise_coefficients(coefficients.size());
+    std::transform(coefficients.begin(), coefficients.end(),
+                   pointwise_coefficients.begin(),
+                   [](const auto& vec) { vec[i]; });
+    solutions[i] = root_polynomial_positive(pointwise_coefficients, lower_bound,
+                                            upper_bound);
+  }
+  return solutions;
+}
+}  // namespace
+namespace EquationsOfState {
+template <typename ColdEquationOfState>
+AnalyticalThermal<ColdEquationOfState>::AnalyticalThermal(
+    ColdEquationOfState cold_eos, const double S0, const double L,
+    const double gamma, const double n0, const double alpha)
+    : cold_eos_(std::move(cold_eos)),
+      S0_(S0),
+      L_(L),
+      gamma_(gamma),
+      n0_(n0),
+      alpha_(alpha) {
+  eta_ = get_eta();
+}
+
+EQUATION_OF_STATE_MEMBER_DEFINITIONS(template <typename ColdEquationOfState>,
+                                     AnalyticalThermal<ColdEquationOfState>,
+                                     double, 3)
+EQUATION_OF_STATE_MEMBER_DEFINITIONS(template <typename ColdEquationOfState>,
+                                     AnalyticalThermal<ColdEquationOfState>,
+                                     DataVector, 3)
+
+template <typename ColdEquationOfState>
+std::unique_ptr<
+    EquationOfState<AnalyticalThermal<ColdEquationOfState>::is_relativistic, 3>>
+AnalyticalThermal<ColdEquationOfState>::get_clone() const {
+  auto clone = std::make_unique<AnalyticalThermal<ColdEquationOfState>>(*this);
+  return std::unique_ptr<EquationOfState<is_relativistic, 3>>(std::move(clone));
+}
+
+template <typename ColdEquationOfState>
+bool AnalyticalThermal<ColdEquationOfState>::operator==(
+    const AnalyticalThermal<ColdEquationOfState>& rhs) const {
+  return cold_eos_ == rhs.cold_eos_ and S0_ == rhs.S0_ and L_ == rhs.L_ and
+         gamma_ == rhs.gamma_ and n0_ == rhs.n0_ and alpha_ == rhs.alpha_;
+}
+template <typename ColdEquationOfState>
+bool AnalyticalThermal<ColdEquationOfState>::operator!=(
+    const AnalyticalThermal<ColdEquationOfState>& rhs) const {
+  return not(*this == rhs);
+}
+
+template <typename ColdEquationOfState>
+bool AnalyticalThermal<ColdEquationOfState>::is_equal(
+    const EquationOfState<is_relativistic, 3>& rhs) const {
+  const auto& derived_ptr =
+      dynamic_cast<const AnalyticalThermal<ColdEquationOfState>* const>(&rhs);
+  return derived_ptr != nullptr and *derived_ptr == *this;
+}
+
+template <typename ColdEquationOfState>
+AnalyticalThermal<ColdEquationOfState>::AnalyticalThermal(CkMigrateMessage* msg)
+    : EquationOfState<is_relativistic, 3>(msg) {}
+
+template <typename ColdEquationOfState>
+void AnalyticalThermal<ColdEquationOfState>::pup(PUP::er& p) {
+  EquationOfState<is_relativistic, 3>::pup(p);
+  p | cold_eos_;
+  p | S0_;
+  p | L_;
+  p | gamma_;
+  p | n0_;
+  p | alpha_;
+  p | eta_;
+}
+template <class ColdEos>
+double AnalyticalThermal<ColdEos>::get_eta() const {
+  return 5 / 9 * (L_ - 3 * S0_ * gamma_) /
+         ((1 - square(cbrt(2))) * (2 / 3 - gamma_) *
+          baryonic_fermi_internal_energy(saturation_density_));
+}
+template <class ColdEos>
+template <class DataType>
+DataType AnalyticalThermal<ColdEos>::baryonic_fermi_internal_energy(
+    const DataType& rest_mass_density) const {
+  square(hbar_over_baryon_mass_to_four_thirds_) / 2 *
+      pow(3 * square(M_PI) * rest_mass_density, 2 / 3);
+}
+
+template <class ColdEos>
+template <class DataType>
+DataType AnalyticalThermal<ColdEos>::thermal_internal_energy(
+    const DataType& rest_mass_density, const DataType& temperature,
+    const DataType& electron_fraction) const {
+  // TODO: Do the right thing here pointwise
+  const double fs = max(temperature) < .001 ? 1.0 : 11.0 / 4.0;
+  const DataType radiation = 4 * stefan_boltzmann_sigma_ * fs *
+                             pow(temperature, 4) / rest_mass_density;
+  // Factor out a `temperature` from the ideal and degenerate terms
+  const double ideal = 1.5;
+
+  const DataType degenerate =
+      (a_degeneracy(rest_mass_density,
+                    make_with_value<DataType>(rest_mass_density, 0.5),
+                    dirac_effective_mass(rest_mass_density)) +
+       a_degeneracy(rest_mass_density, electron_fraction,
+                    make_with_value<DataType>(
+                        rest_mass_density, electron_mass_over_baryon_mass_))) *
+      temperature;
+  return radiation + temperature * ideal * degenerate / (ideal + degenerate);
+}
+template <class ColdEos>
+template <class DataType>
+DataType AnalyticalThermal<ColdEos>::thermal_pressure(
+    const DataType& rest_mass_density, const DataType& temperature,
+    const DataType& electron_fraction) const {
+  // TODO
+  return make_with_value<DataType>(rest_mass_density, 0.1);
+}
+template <class ColdEos>
+template <class DataType>
+DataType AnalyticalThermal<ColdEos>::composition_dependent_internal_energy(
+    const DataType& rest_mass_density,
+    const DataType& electron_fraction) const {
+  const DataType equilibrium_electron_fraction =
+      beta_equalibrium_proton_fraction(rest_mass_density);
+  DataType result = 3.0 * K_ *
+                    (cbrt(pow(electron_fraction, 4) * rest_mass_density) -
+                     cbrt(pow(electron_fraction, 4) * rest_mass_density));
+  result +=
+      symmetry_energy_at_zero_temp(rest_mass_density) * 4 *
+      (electron_fraction * (electron_fraction - 1.0) -
+       equilibrium_electron_fraction * (equilibrium_electron_fraction - 1.0));
+  return result;
+}
+template <class ColdEos>
+template <class DataType>
+DataType AnalyticalThermal<ColdEos>::composition_dependent_pressure(
+    const DataType& rest_mass_density,
+    const DataType& electron_fraction) const {
+  const DataType equilibrium_electron_fraction =
+      beta_equalibrium_proton_fraction(rest_mass_density);
+  K_* rest_mass_density*(
+      cbrt(pow(electron_fraction, 4) * rest_mass_density) -
+      cbrt(pow(equilibrium_electron_fraction, 4) * rest_mass_density)) +
+      symmetry_pressure_at_zero_temp(rest_mass_density) 4 *
+          (electron_fraction * (electron_fraction - 1.0) -
+           equilibrium_electron_fraction *
+               (equilibrium_electron_fraction - 1.0));
+  // TODO
+  return make_with_value<DataType>(rest_mass_density, 0.1);
+}
+
+template <typename ColdEos>
+template <typename DataType>
+DataType AnalyticalThermal<ColdEos>::dirac_effective_mass(
+    const DataType& rest_mass_density) const {
+  return invsqrt(1 + pow((rest_mass_density / n0_), -alpha_ * 2));
+}
+
+template <typename ColdEos>
+template <typename DataType>
+DataType AnalyticalThermal<ColdEos>::symmetry_energy_at_zero_temp(
+    const DataType& rest_mass_density) const {
+  // Erratum, Eq. (17)
+  double common_factor = 0.6 * (pow(.25, 1.0 / 3.0) - 1.0);
+  DataType kinetic_symmetry_component =
+      common_factor * baryonic_fermi_internal_energy(rest_mass_density);
+  double kinetic_symmetry_component_at_saturation =
+      common_factor * baryonic_fermi_internal_energy(saturation_density_);
+  // Eq. (14)
+  return eta_ * kinetic_symmetry_component +
+         (S0_ - eta_ * kinetic_symmetry_component_at_saturation) *
+             pow(rest_mass_density / saturation_density_, gamma_);
+}
+template <class ColdEos>
+template <class DataType>
+DataType AnalyticalThermal<ColdEos>::beta_equalibrium_proton_fraction(
+    const DataType& rest_mass_density) const {
+  // Eq. (20) recast with z = (1 - 2 Y_{p,beta}) can be solved
+  // via Cardano's formula.  I don't know if this is fast
+  // but it's certainly simpler than unpacking and rootfinding
+  DataType A = 64 / (3 * square(M_PI) * rest_mass_density) *
+               cube(symmetry_energy_at_zero_temp(rest_mass_density) /
+                    hbar_over_baryon_mass_to_four_thirds_);
+  // z^3 + pz + q = 0; p = 1/(2A), q = -1/(2A)
+  DataType p = 1 / (2 * A);
+  // q = -p
+  DataType sqrtDelta = p * sqrt(0.25 + p / 27.0);
+  return cbrt(p * 0.5 + sqrtDelta) + cbrt(p * 0.5 - sqrtDelta);
+}
+template <class ColdEos>
+template <class DataType>
+DataType AnalyticalThermal<ColdEos>::a_degeneracy(
+    const DataType& rest_mass_density, const DataType& particle_fraction,
+    const DataType& mass) const {
+  double kinetic_common_factor =
+      pow(3 * square(M_PI) * particle_fraction * rest_mass_density, 2.0 / 3.0) *
+      square(hbar_over_baryon_mass_to_four_thirds_);
+  square(M_PI) / 2 * sqrt(kinetic_common_factor + square(mass)) /
+      kinetic_common_factor;
+}
+template <class ColdEos>
+template <class DataType>
+DataType AnalyticalThermal<ColdEos>::symmetry_pressure_at_zero_temp(
+    const DataType& rest_mass_density) const {
+  double common_factor = 0.6 * (pow(.25, 1.0 / 3.0) - 1.0);
+  DataType kinetic_symmetry_component =
+      common_factor * baryonic_fermi_internal_energy(rest_mass_density);
+  double kinetic_symmetry_component_at_saturation =
+      common_factor * baryonic_fermi_internal_energy(saturation_density_);
+  return rest_mass_density *
+         (2.0 * eta_ / 3.0 * kinetic_symmetry_component +
+          (S0_ - eta_ * kinetic_symmetry_component_at_saturation) *
+              pow(rest_mass_density / saturation_density_, gamma_));
+}
+
+template <typename ColdEquationOfState>
+template <class DataType>
+Scalar<DataType> AnalyticalThermal<ColdEquationOfState>::
+    pressure_from_density_and_temperature_impl(
+        const Scalar<DataType>& rest_mass_density,
+        const Scalar<DataType>& temperature,
+        const Scalar<DataType>& electron_fraction) const {
+  return Scalar<DataType>{
+      get(cold_eos_.pressure_from_density(rest_mass_density)) +
+      composition_dependent_pressure(get(rest_mass_density),
+                                     get(electron_fraction)) +
+      thermal_pressure(get(rest_mass_density), get(temperature),
+                       get(electron_fraction))};
+}
+
+template <typename ColdEquationOfState>
+template <class DataType>
+Scalar<DataType>
+AnalyticalThermal<ColdEquationOfState>::pressure_from_density_and_energy_impl(
+    const Scalar<DataType>& rest_mass_density,
+    const Scalar<DataType>& specific_internal_energy,
+    const Scalar<DataType>& electron_fraction) const {
+  // Have to rootfind for temperature
+  const Scalar<DataType> temperature = temperature_from_density_and_energy(
+      rest_mass_density, specific_internal_energy, electron_fraction);
+  return pressure_from_density_and_temperature(rest_mass_density, temperature,
+                                               electron_fraction);
+}
+
+template <typename ColdEquationOfState>
+template <class DataType>
+Scalar<DataType> AnalyticalThermal<ColdEquationOfState>::
+    specific_internal_energy_from_density_and_temperature_impl(
+        const Scalar<DataType>& rest_mass_density,
+        const Scalar<DataType>& temperature,
+        const Scalar<DataType>& electron_fraction) const {
+  return get(cold_eos_.specific_internal_energy_from_density(
+             rest_mass_density)) +
+         composition_dependent_internal_energy(get(rest_mass_density),
+                                               get(electron_fraction)) +
+         thermal_internal_energy(get(rest_mass_density), get(temperature),
+                                 get(electron_fraction));
+}
+
+template <typename ColdEquationOfState>
+template <class DataType>
+Scalar<DataType> AnalyticalThermal<ColdEquationOfState>::
+    temperature_from_density_and_energy_impl(
+        const Scalar<DataType>& rest_mass_density,
+        const Scalar<DataType>& specific_internal_energy,
+        const Scalar<DataType>& electron_fraction) const {
+  const DataType thermal_energy_needed =
+      get(specific_internal_energy) -
+      get(cold_eos_.specific_internal_energy_from_density(rest_mass_density)) -
+      composition_dependent_internal_energy(get(rest_mass_density),
+                                            get(electron_fraction));
+  // TODO: Do the right thing here pointwise
+  const double fs = max(temperature) < .001 ? 1.0 : 11.0 / 4.0;
+  DataType radiation_prefactor =
+      4 * stefan_boltzmann_sigma_ * fs / get(rest_mass_density);
+  double ideal_prefactor = 1.5;
+  DataType degenerate_prefactor =
+      (a_degeneracy(rest_mass_density,
+                    make_with_value<DataType>(get(rest_mass_density), 0.5),
+                    dirac_effective_mass(get(rest_mass_density))) _ +
+       a_degeneracy(
+           get(rest_mass_density),
+           get(electron_fraction(), get(electron_mass_over_baryon_mass_)))) *
+      get(temperature);
+  // Coefficients on rootfindng of a polynomial
+  // E_thermal(T) = A_4 T^4 + A_2 T^2 +
+  const DataType A0 = -thermal_energy_needed * ideal_prefactor;
+  const DataType A1 = -thermal_energy_needed * degenerate_prefactor;
+  const DataType A2 = ideal_prefactor * degenerate_prefactor;
+  const DataType A4 = radiation_prefactor * ideal_prefactor;
+  const DataType A5 = radiation_prefactor * degenerate_prefactor;
+  // Most of the time the temperature will be small
+  double loose_upper_bound = LIKELY(max(thermal_energy_needed)) < 1.0e2
+                                 ? 200.0
+                                 : std::numeric_limits<double>::max();
+  return root_polynomial_postive(
+      std::vector<DataType>{{A0, A1, A2, 0.0, A4, A5}}, lower_bound = 0.0,
+      upper_bound = loose_upper_bound);
+}
+
+template <typename ColdEquationOfState>
+template <class DataType>
+Scalar<DataType> AnalyticalThermal<ColdEquationOfState>::
+    sound_speed_squared_from_density_and_temperature_impl(
+        const Scalar<DataType>& rest_mass_density,
+        const Scalar<DataType>& temperature,
+        const Scalar<DataType>& electron_fraction) const {
+  // TODO
+  return Scalar<DataType>{
+      make_with_value<DataType>(get(rest_mass_density), 0.1)};
+}
+}  // namespace EquationsOfState
+
+template class EquationsOfState::AnalyticalThermal<
+    EquationsOfState::PolytropicFluid<true>>;
+template class EquationsOfState::AnalyticalThermal<
+    EquationsOfState::Enthalpy<EquationsOfState::Spectral>>;
