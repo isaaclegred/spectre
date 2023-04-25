@@ -87,8 +87,8 @@ namespace EquationsOfState {
  * \f[
  * a(n,Y_p, m) = \frac{\pi^2k_B^2}/2 \frac{\sqrt{(3\pi^2Y_pn)^{2/3}
  * (\hbar c^2) + m^2 }}{(3\pi^2Y_p n)^{2/3}(\hbar c)^2}
- * The dirac effective mass is
  * \f]
+ * The dirac effective mass is
  * \f[
  * M^{*}_{\rm SM}\left{(mc^2)^{-1/2} +
  \left[mc^2\left(\frac{n}{n_0}\right)^{-\alpha}\right]^{-2}\right}^{-1/2}
@@ -265,6 +265,10 @@ class AnalyticalThermal
                             const DataType& temperature,
                             const DataType& electron_fraction) const;
   template <class DataType>
+  DataType thermal_pressure_density_derivative(
+      const DataType& rest_mass_density, const DataType& temperature,
+      const DataType& electron_fraction) const;
+  template <class DataType>
   DataType composition_dependent_internal_energy(
       const DataType& rest_mass_density,
       const DataType& electron_fraction) const;
@@ -280,14 +284,22 @@ class AnalyticalThermal
   template <class DataType>
   DataType beta_equalibrium_proton_fraction(
       const DataType& rest_mass_density) const;
-  template <class DataType>
+  template <class DataType, typename MassType>
   DataType a_degeneracy(const DataType& rest_mass_density,
                         const DataType& electron_fraction,
-                        const DataType& mass) const;
+                        const MassType& mass) const;
+  template <class DataType, typename MassType>
+  DataType a_degeneracy_log_density_derivative(
+      const DataType& rest_mass_density, const DataType& electron_fraction,
+      const MassType& mass) const;
   double get_eta() const;
 
   template <class DataType>
   DataType symmetry_pressure_at_zero_temp(
+      const DataType& rest_mass_density) const;
+
+  template <class DataType>
+  DataType symmetry_pressure_density_derivative_at_zero_temp(
       const DataType& rest_mass_density) const;
 
   EQUATION_OF_STATE_FORWARD_DECLARE_MEMBER_IMPLS(3)
@@ -299,6 +311,10 @@ class AnalyticalThermal
   double n0_;
   double alpha_;
   double eta_;
+  // This variable just happens to be the way that
+  // these microscopic quantities enter all of the
+  // EoS expressions. It is not dimensionless in
+  // geometrized units
   double hbar_over_baryon_mass_to_four_thirds_ = 1.5060;
   double saturation_density_ = 4.53e-4;
   double stefan_boltzmann_sigma_ =
@@ -306,7 +322,7 @@ class AnalyticalThermal
       pow(1 / hbar_over_baryon_mass_to_four_thirds_, 3);
   double electron_mass_over_baryon_mass_ = 5.44e-4;
   double K_ =
-      cbrt(3 * square(M_PI)) * hbar_over_baryon_mass_to_four_thirds_ * 0.25
+      cbrt(3 * square(M_PI)) * hbar_over_baryon_mass_to_four_thirds_ * 0.25;
 };
 
 /// \cond
