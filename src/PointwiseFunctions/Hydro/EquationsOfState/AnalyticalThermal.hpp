@@ -302,6 +302,7 @@ class AnalyticalThermal
   DataType symmetry_pressure_density_derivative_at_zero_temp(
       const DataType& rest_mass_density) const;
 
+
   EQUATION_OF_STATE_FORWARD_DECLARE_MEMBER_IMPLS(3)
 
   ColdEquationOfState cold_eos_;
