@@ -37,50 +37,52 @@ namespace {
 //       5.0 / 3.0);
 // }
 
-// void check_exact_polytrope() {
-//   EquationsOfState::PolytropicFluid<true> cold_eos{3.0, 2.0};
-//   const Scalar<double> rho{4.0};
-//   const auto p_c = cold_eos.pressure_from_density(rho);
-//   CHECK(get(p_c) == 48.0);
-//   const auto eps_c = cold_eos.specific_internal_energy_from_density(rho);
-//   CHECK(get(eps_c) == 12.0);
-//   const auto h_c =  hydro::relativistic_specific_enthalpy(rho, eps_c, p_c)
-//   CHECK(get(h_c) == ( 25.0 ));
-//   const auto chi_c = cold_eos.chi_from_density(rho);
-//   CHECK(get(chi_c) == 24.0);
-//   const auto p_c_kappa_c_over_rho_sq =
-//       cold_eos.kappa_times_p_over_rho_squared_from_density(rho);
-//   CHECK(get(p_c_kappa_c_over_rho_sq) == 0.0);
-//   const auto c_s_sq = (get(chi_c) + get(p_c_kappa_c_over_rho_sq)) / get(h_c);
-//   CHECK(c_s_sq == ( 0.96));
-//   EquationsOfState::HybridEos<EquationsOfState::PolytropicFluid<true>>
-//       eos{cold_eos, 1.5};
-//   TestHelpers::EquationsOfState::test_get_clone(eos);
+void check_exact_polytrope() {
+  EquationsOfState::PolytropicFluid<true> cold_eos{3.0, 2.0};
+  const Scalar<double> rho{4.0};
+  const auto p_c = cold_eos.pressure_from_density(rho);
+  CHECK(get(p_c) == 48.0);
+  const auto eps_c = cold_eos.specific_internal_energy_from_density(rho);
+  CHECK(get(eps_c) == 12.0);
+  const auto h_c = hydro::relativistic_specific_enthalpy(rho, eps_c, p_c)
+      CHECK(get(h_c) == (25.0));
+  const auto chi_c = cold_eos.chi_from_density(rho);
+  CHECK(get(chi_c) == 24.0);
+  const auto p_c_kappa_c_over_rho_sq =
+      cold_eos.kappa_times_p_over_rho_squared_from_density(rho);
+  CHECK(get(p_c_kappa_c_over_rho_sq) == 0.0);
+  const auto c_s_sq = (get(chi_c) + get(p_c_kappa_c_over_rho_sq)) / get(h_c);
+  CHECK(c_s_sq == (0.96));
+  EquationsOfState::HybridEos<EquationsOfState::PolytropicFluid<true>> eos{
+      cold_eos, 1.5};
+  TestHelpers::EquationsOfState::test_get_clone(eos);
 
-//   const
-//   EquationsOfState::AnalyticalThermal<
-//       EquationsOfState::PolytropicFluid<true>>
-//       other_eos{{100.0, 2.0}, 1.4};
-//   const auto other_type_eos =
-//       EquationsOfState::PolytropicFluid<true>{100.0, 2.0};
-//   CHECK(eos == eos);
-//   CHECK(eos != other_eos);
-//   CHECK(eos != other_type_eos);
-//   const Scalar<double> eps{5.0};
-//   const auto p = eos.pressure_from_density_and_energy(rho, eps);
-//   CHECK(get(p) == 34.0);
-//   const auto h = hydro::relativistic_specific_enthalpy(rho, eps, p);
-//   CHECK(get(h) ==  14.5;
-//   CHECK(get(eos.pressure_from_density_and_enthalpy(rho, h)) == 34.0);
-//   CHECK(get(eos.specific_internal_energy_from_density_and_pressure(rho, p))
-//   ==
-//         5.0);
-//   const auto chi = eos.chi_from_density_and_energy(rho, eps);
-//   CHECK(get(chi) == 14.5);
-//   const auto p_kappa_over_rho_sq =
-//       eos.kappa_times_p_over_rho_squared_from_density_and_energy(rho, eps);
-//   CHECK(get(p_kappa_over_rho_sq) == 4.25);
-// }
+  EquationsOfState::AnalyticalThermal<EquationsOfState::PolytropicFluid<true>>
+      other_eos{{100.0, 2.0}, 1.5, .1, .1, 1.0, .89};
+  const auto other_type_eos =
+      EquationsOfState::PolytropicFluid<true>{100.0, 2.0};
+  CHECK(eos == eos);
+  CHECK(eos != other_eos);
+  CHECK(eos != other_type_eos);
+  const Scalar<double> eps{5.0};
+  const Scalar<double> temp{.01};
+  const Scalar<double> elec_frac{.05};
+  const auto p = eos.pressure_from_density_and_energy(rho, eps);
+  CHECK(get(p) == 34.0);
+  const auto h = hydro::relativistic_specific_enthalpy(rho, eps, p);
+  CHECK(get(h) == 14.5);
+  CHECK(get(eos.pressure_from_density_and_temperature(rho, temp, elec_frac)) ==
+        34.0);
+  CHECK(get(eos.specific_internal_energy_from_density_and_temperature(
+            rho, temp, elec_frac)) == 5.0);
+  const auto temp =
+      eos.temperature_from_density_and_energy(rho, eps, elec_frac);
+  CHECK(get(chi) == 14.5);
+  const auto speed_of_sound =
+      eos.sound_speed_squared_from_density_and_temperature(rho, eps,
+                                                           electron_fraction);
+  CHECK(get(speed_of_sound) == 4.25);
+}
 
 void check_bounds() {
   const auto cold_eos = EquationsOfState::PolytropicFluid<true>{100.0, 1.5};
