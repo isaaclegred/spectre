@@ -102,8 +102,8 @@ void AnalyticalThermal<ColdEquationOfState>::pup(PUP::er& p) {
 }
 template <class ColdEos>
 double AnalyticalThermal<ColdEos>::get_eta() const {
-  return 5 / 9 * (L_ - 3 * S0_ * gamma_) /
-         ((1 - square(cbrt(2))) * (2 / 3 - gamma_) *
+  return 5.0 / 9.0 * (L_ - 3 * S0_ * gamma_) /
+         ((cbrt(0.25) - 1) * (2.0 / 3.0 - gamma_) *
           baryonic_fermi_internal_energy(saturation_density_));
 }
 template <class ColdEos>
@@ -122,7 +122,7 @@ DataType AnalyticalThermal<ColdEos>::thermal_internal_energy(
   // Following box 1
   // TODO: Do the right thing here pointwise
   const double fs = max(temperature) < .001 ? 1.0 : 11.0 / 4.0;
-  const DataType radiation = 4 * stefan_boltzmann_sigma_ * fs *
+  const DataType radiation = 4.0 * stefan_boltzmann_sigma_ * fs *
                              pow(temperature, 4) / rest_mass_density;
   // Factor out a `temperature` from the ideal and degenerate terms
   const double ideal = 1.5;
@@ -393,13 +393,14 @@ Scalar<DataType> AnalyticalThermal<ColdEquationOfState>::
         const Scalar<DataType>& rest_mass_density,
         const Scalar<DataType>& specific_internal_energy,
         const Scalar<DataType>& electron_fraction) const {
+  const auto cold_energy =
+      get(cold_eos_.specific_internal_energy_from_density(rest_mass_density));
+  const auto composition_energy = composition_dependent_internal_energy(
+      get(rest_mass_density), get(electron_fraction));
   const DataType thermal_energy_needed =
-      get(specific_internal_energy) -
-      get(cold_eos_.specific_internal_energy_from_density(rest_mass_density)) -
-      composition_dependent_internal_energy(get(rest_mass_density),
-                                            get(electron_fraction));
+      get(specific_internal_energy) - cold_energy - composition_energy;
   // TODO: Do the right thing here pointwise
-  const double fs = .001;
+  const double fs = 11.0 / 4.0;
   const DataType radiation_prefactor =
       4 * stefan_boltzmann_sigma_ * fs / get(rest_mass_density);
   double ideal_prefactor = 1.5;
