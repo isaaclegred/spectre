@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "PointwiseFunctions/Hydro/EquationsOfState/AnalyticalThermal.hpp"
 #include "PointwiseFunctions/Hydro/EquationsOfState/DarkEnergyFluid.hpp"
 #include "PointwiseFunctions/Hydro/EquationsOfState/Enthalpy.hpp"
 #include "PointwiseFunctions/Hydro/EquationsOfState/EquationOfState.hpp"
