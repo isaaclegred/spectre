@@ -445,7 +445,7 @@ def render_status(
         yield table
 
 
-@click.command()
+@click.command(name="status")
 @click.option(
     "-u",
     "--uid",
