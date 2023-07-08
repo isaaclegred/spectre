@@ -11,17 +11,9 @@ function(add_ghmhd_executable INITIAL_DATA_NAME INITIAL_DATA LIBS_TO_LINK)
     )
 endfunction(add_ghmhd_executable)
 
-function(add_ghmhd_with_horizon_executable INITIAL_DATA_NAME INITIAL_DATA LIBS_TO_LINK)
-  add_spectre_parallel_executable(
-    "EvolveGhValenciaDivClean${INITIAL_DATA_NAME}"
-    EvolveGhValenciaDivCleanWithHorizon
-    Evolution/Executables/GrMhd/GhValenciaDivClean
-    "EvolutionMetavars<${INITIAL_DATA}>"
-    "${LIBS_TO_LINK}"
-    )
-endfunction(add_ghmhd_with_horizon_executable)
 
 set(LIBS_TO_LINK
+  ApparentHorizons
   CoordinateMaps
   DiscontinuousGalerkin
   DomainCreators
@@ -44,6 +36,7 @@ set(LIBS_TO_LINK
   Observer
   Options
   Parallel
+  ParallelInterpolation
   PhaseControl
   RelativisticEulerSolutions
   Serialization
@@ -63,25 +56,25 @@ if (TARGET SpEC::Exporter)
     EvolveGhValenciaDivClean PRIVATE HAS_SPEC_EXPORTER)
 endif()
 
-add_ghmhd_with_horizon_executable(
+add_ghmhd_executable(
   BondiHoyleAccretion
   gh::Solutions::WrappedGr<grmhd::AnalyticData::BondiHoyleAccretion>
   "${LIBS_TO_LINK}"
   )
 
-add_ghmhd_with_horizon_executable(
+add_ghmhd_executable(
   MagnetizedFmDisk
   gh::Solutions::WrappedGr<grmhd::AnalyticData::MagnetizedFmDisk>
   "${LIBS_TO_LINK}"
   )
 
-add_ghmhd_with_horizon_executable(
+add_ghmhd_executable(
   BondiMichel
   gh::Solutions::WrappedGr<grmhd::Solutions::BondiMichel>
-  "${LIBS_TO_LINK};ParallelInterpolation"
+  "${LIBS_TO_LINK}"
   )
 
-add_ghmhd_with_horizon_executable(
+add_ghmhd_executable(
   FishboneMoncriefDisk
   gh::Solutions::WrappedGr<RelativisticEuler::Solutions::FishboneMoncriefDisk>
   "${LIBS_TO_LINK}"

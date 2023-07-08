@@ -125,15 +125,15 @@ void ComputeHorizonVolumeQuantities::apply(
                                       gr::Tags::SpatialRicci<DataVector, 3>>) {
     static_assert(
         tmpl::list_contains_v<SrcTagList,
-                              Tags::deriv<gh::Tags::Phi<DataVector, 3>,
-                                          tmpl::size_t<3>, Frame::Inertial>>,
+                              ::Tags::deriv<gh::Tags::Phi<DataVector, 3>,
+                                            tmpl::size_t<3>, Frame::Inertial>>,
         "If Ricci is requested, SrcTags must include deriv of Phi");
     auto& spatial_ricci =
         get<gr::Tags::SpatialRicci<DataVector, 3>>(*target_vars);
     gh::spatial_ricci_tensor(
         make_not_null(&spatial_ricci), phi,
-        get<Tags::deriv<gh::Tags::Phi<DataVector, 3>, tmpl::size_t<3>,
-                        Frame::Inertial>>(src_vars),
+        get<::Tags::deriv<gh::Tags::Phi<DataVector, 3>, tmpl::size_t<3>,
+                          Frame::Inertial>>(src_vars),
         inv_metric);
   }
 }
@@ -308,16 +308,16 @@ void ComputeHorizonVolumeQuantities::apply(
                     gr::Tags::SpatialRicci<DataVector, 3, TargetFrame>>) {
     static_assert(
         tmpl::list_contains_v<SrcTagList,
-                              Tags::deriv<gh::Tags::Phi<DataVector, 3>,
-                                          tmpl::size_t<3>, Frame::Inertial>>,
+                              ::Tags::deriv<gh::Tags::Phi<DataVector, 3>,
+                                            tmpl::size_t<3>, Frame::Inertial>>,
         "If Ricci is requested, SrcTags must include deriv of Phi");
 
     auto& inertial_spatial_ricci =
         *(get<inertial_spatial_ricci_tag>(target_vars, make_not_null(&buffer)));
     gh::spatial_ricci_tensor(
         make_not_null(&inertial_spatial_ricci), phi,
-        get<Tags::deriv<gh::Tags::Phi<DataVector, 3>, tmpl::size_t<3>,
-                        Frame::Inertial>>(src_vars),
+        get<::Tags::deriv<gh::Tags::Phi<DataVector, 3>, tmpl::size_t<3>,
+                          Frame::Inertial>>(src_vars),
         inertial_inv_metric);
 
     if constexpr (tmpl::list_contains_v<

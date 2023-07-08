@@ -251,11 +251,12 @@ struct FindApparentHorizon
           (verbosity > ::Verbosity::Silent and has_converged)) {
         Parallel::printf(
             "%s: t=%.6g: its=%d: %.1e<R<%.0e, |R|=%.1g, "
-            "|R_grid|=%.1g, %.4g<r<%.4g\n",
+            "|R_grid|=%.1g, %.4g<r<%.4g\n, has converged?=%d",
             pretty_type::name<InterpolationTargetTag>(),
             InterpolationTarget_detail::get_temporal_id_value(temporal_id),
             info.iteration, info.min_residual, info.max_residual,
-            info.residual_ylm, info.residual_mesh, info.r_min, info.r_max);
+            info.residual_ylm, info.residual_mesh, info.r_min, info.r_max,
+            has_converged);
       }
 
       if (status == FastFlow::Status::SuccessfulIteration) {
