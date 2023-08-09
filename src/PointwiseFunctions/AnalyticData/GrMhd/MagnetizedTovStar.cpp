@@ -27,11 +27,12 @@ MagnetizedTovStar::MagnetizedTovStar(
     const double central_rest_mass_density,
     std::unique_ptr<MagnetizedTovStar::equation_of_state_type>
         equation_of_state,
+    std::optional<std::array<double, 3>> spatial_velocity,
     const RelativisticEuler::Solutions::TovCoordinates coordinate_system,
     const size_t pressure_exponent, const double cutoff_pressure_fraction,
     const double vector_potential_amplitude)
     : tov_star(central_rest_mass_density, std::move(equation_of_state),
-               coordinate_system),
+               spatial_velocity, coordinate_system),
       pressure_exponent_(pressure_exponent),
       cutoff_pressure_(cutoff_pressure_fraction *
                        get(this->equation_of_state().pressure_from_density(

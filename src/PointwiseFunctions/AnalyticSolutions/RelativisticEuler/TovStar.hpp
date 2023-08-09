@@ -11,6 +11,7 @@
 #include "DataStructures/DataVector.hpp"
 #include "DataStructures/Tensor/EagerMath/Magnitude.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
+#include "Options/Auto.hpp"
 #include "Options/String.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/AnalyticSolution.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/RelativisticEuler/Solutions.hpp"
@@ -138,16 +139,20 @@ struct TovVariables {
   TovVariables(
       const tnsr::I<DataType, 3>& local_coords, const DataType& local_radius,
       const RelativisticEuler::Solutions::TovSolution& local_radial_solution,
-      const EquationsOfState::EquationOfState<true, 1>& local_eos)
+      const EquationsOfState::EquationOfState<true, 1>& local_eos,
+      const std::array<double, 3>& local_star_spatial_velocity =
+          std::array<double, Dim>({0.0, 0.0, 0.0}))
       : coords(local_coords),
         radius(local_radius),
         radial_solution(local_radial_solution),
-        eos(local_eos) {}
+        eos(local_eos),
+        star_spatial_velocity(local_star_spatial_velocity) {}
 
   const tnsr::I<DataType, 3>& coords;
   const DataType& radius;
   const RelativisticEuler::Solutions::TovSolution& radial_solution;
   const EquationsOfState::EquationOfState<true, 1>& eos;
+  const std::array<double, Dim> star_spatial_velocity;
 
   void operator()(gsl::not_null<Scalar<DataType>*> mass_over_radius,
                   gsl::not_null<Cache*> cache,
@@ -328,6 +333,13 @@ class TovStar : public virtual evolution::initial_data::InitialData,
     static type lower_bound() { return 0.; }
   };
 
+  /// The initial spatial velocity of the star
+  struct SpatialVelocity {
+    using type = Options::Auto<std::array<double, volume_dim>>;
+    static constexpr Options::String help = {
+        "The initial spatial velocity of the star"};
+  };
+
   /// Areal (Schwarzschild) or isotropic coordinates
   struct Coordinates {
     using type = RelativisticEuler::Solutions::TovCoordinates;
@@ -339,7 +351,7 @@ class TovStar : public virtual evolution::initial_data::InitialData,
 
   using options =
       tmpl::list<CentralDensity, hydro::OptionTags::EquationOfState<true, 1>,
-                 Coordinates>;
+                 SpatialVelocity, Coordinates>;
 
   static constexpr Options::String help = {
       "A static, spherically-symmetric star found by solving the \n"
@@ -355,6 +367,7 @@ class TovStar : public virtual evolution::initial_data::InitialData,
   TovStar(double central_rest_mass_density,
           std::unique_ptr<EquationsOfState::EquationOfState<true, 1>>
               equation_of_state,
+          std::optional<std::array<double, volume_dim>> spatial_velocity,
           const RelativisticEuler::Solutions::TovCoordinates coordinate_system =
               RelativisticEuler::Solutions::TovCoordinates::Schwarzschild);
 
@@ -387,6 +400,10 @@ class TovStar : public virtual evolution::initial_data::InitialData,
     return radial_solution_;
   }
 
+  const std::array<double, volume_dim>& spatial_velocity() {
+    return spatial_velocity_;
+  }
+
  protected:
   template <template <class, tov_detail::StarRegion> class VarsComputer,
             typename DataType, typename... Tags, typename... VarsComputerArgs>
@@ -411,7 +428,11 @@ class TovStar : public virtual evolution::initial_data::InitialData,
           VarsComputer<DataType, tov_detail::StarRegion::Exterior>;
       typename ExteriorVarsComputer::Cache cache{get_size(radius)};
       ExteriorVarsComputer computer{
-          x, radius, radial_solution_, *equation_of_state_,
+          x,
+          radius,
+          radial_solution_,
+          *equation_of_state_,
+          spatial_velocity_,
           std::forward<VarsComputerArgs>(vars_computer_args)...};
       return {cache.get_var(computer, Tags{})...};
     } else if (max(radius) <= outer_radius and
@@ -421,7 +442,11 @@ class TovStar : public virtual evolution::initial_data::InitialData,
           VarsComputer<DataType, tov_detail::StarRegion::Interior>;
       typename InteriorVarsComputer::Cache cache{get_size(radius)};
       InteriorVarsComputer computer{
-          x, radius, radial_solution_, *equation_of_state_,
+          x,
+          radius,
+          radial_solution_,
+          *equation_of_state_,
+          spatial_velocity_,
           std::forward<VarsComputerArgs>(vars_computer_args)...};
       return {cache.get_var(computer, Tags{})...};
     } else {
@@ -463,22 +488,31 @@ class TovStar : public virtual evolution::initial_data::InitialData,
         if (get_element(radius, i) > outer_radius) {
           typename ExteriorVarsComputer::Cache cache{1};
           ExteriorVarsComputer computer{
-              x_i, get_element(radius, i), radial_solution_,
+              x_i,
+              get_element(radius, i),
+              radial_solution_,
               *equation_of_state_,
+              spatial_velocity_,
               std::forward<VarsComputerArgs>(vars_computer_args)...};
           expand_pack(get_var(i, cache, computer, Tags{})...);
         } else if (get_element(radius, i) > center_radius_cutoff) {
           typename InteriorVarsComputer::Cache cache{1};
           InteriorVarsComputer computer{
-              x_i, get_element(radius, i), radial_solution_,
+              x_i,
+              get_element(radius, i),
+              radial_solution_,
               *equation_of_state_,
+              spatial_velocity_,
               std::forward<VarsComputerArgs>(vars_computer_args)...};
           expand_pack(get_var(i, cache, computer, Tags{})...);
         } else {
           typename CenterVarsComputer::Cache cache{1};
           CenterVarsComputer computer{
-              x_i, get_element(radius, i), radial_solution_,
+              x_i,
+              get_element(radius, i),
+              radial_solution_,
               *equation_of_state_,
+              spatial_velocity_,
               std::forward<VarsComputerArgs>(vars_computer_args)...};
           expand_pack(get_var(i, cache, computer, Tags{})...);
         }
@@ -515,6 +549,7 @@ class TovStar : public virtual evolution::initial_data::InitialData,
   std::unique_ptr<equation_of_state_type> equation_of_state_;
   RelativisticEuler::Solutions::TovCoordinates coordinate_system_{};
   RelativisticEuler::Solutions::TovSolution radial_solution_{};
+  std::array<double, volume_dim> spatial_velocity_{};
 };
 
 bool operator!=(const TovStar& lhs, const TovStar& rhs);

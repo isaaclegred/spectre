@@ -4,6 +4,7 @@
 #include "PointwiseFunctions/AnalyticSolutions/RelativisticEuler/TovStar.hpp"
 
 #include <cstddef>
+#include <optional>
 #include <pup.h>
 
 #include "DataStructures/DataVector.hpp"
@@ -23,12 +24,17 @@ TovStar::TovStar(
     const double central_rest_mass_density,
     std::unique_ptr<EquationsOfState::EquationOfState<true, 1>>
         equation_of_state,
+    std::optional<std::array<double, volume_dim>> spatial_velocity,
     const RelativisticEuler::Solutions::TovCoordinates coordinate_system)
     : central_rest_mass_density_(central_rest_mass_density),
       equation_of_state_(std::move(equation_of_state)),
       coordinate_system_(coordinate_system),
       radial_solution_(*equation_of_state_, central_rest_mass_density_,
-                       coordinate_system_) {}
+                       coordinate_system_) {
+  spatial_velocity_ = spatial_velocity.has_value()
+                          ? *spatial_velocity
+                          : std::array<double, 3>({0.0, 0.0, 0.0});
+}
 
 TovStar::TovStar(const TovStar& rhs)
     : evolution::initial_data::InitialData(rhs),
@@ -36,12 +42,14 @@ TovStar::TovStar(const TovStar& rhs)
       equation_of_state_(rhs.equation_of_state_->get_clone()),
       coordinate_system_(rhs.coordinate_system_),
       radial_solution_(*equation_of_state_, central_rest_mass_density_,
-                       coordinate_system_) {}
+                       coordinate_system_),
+      spatial_velocity_(rhs.spatial_velocity_) {}
 
 TovStar& TovStar::operator=(const TovStar& rhs) {
   central_rest_mass_density_ = rhs.central_rest_mass_density_;
   equation_of_state_ = rhs.equation_of_state_->get_clone();
   coordinate_system_ = rhs.coordinate_system_;
+  spatial_velocity_ = rhs.spatial_velocity_;
   radial_solution_ = RelativisticEuler::Solutions::TovSolution(
       *equation_of_state_, central_rest_mass_density_, coordinate_system_);
   return *this;
@@ -58,6 +66,7 @@ void TovStar::pup(PUP::er& p) {
   p | equation_of_state_;
   p | coordinate_system_;
   p | radial_solution_;
+  p | spatial_velocity_;
 }
 
 namespace tov_detail {
@@ -498,9 +507,15 @@ void TovVariables<DataType, Region>::operator()(
     const gsl::not_null<tnsr::I<DataType, 3>*> spatial_velocity,
     const gsl::not_null<Cache*> /*cache*/,
     hydro::Tags::SpatialVelocity<DataType, 3> /*meta*/) const {
-  get<0>(*spatial_velocity) = 0.;
-  get<1>(*spatial_velocity) = 0.;
-  get<2>(*spatial_velocity) = 0.;
+  if constexpr (Region == StarRegion::Center) {
+    get<0>(*spatial_velocity) = get<0>(star_spatial_velocity);
+    get<1>(*spatial_velocity) = get<1>(star_spatial_velocity);
+    get<2>(*spatial_velocity) = get<2>(star_spatial_velocity);
+  } else {
+    get<0>(*spatial_velocity) = 0.0;
+    get<1>(*spatial_velocity) = 0.0;
+    get<2>(*spatial_velocity) = 0.0;
+  }
 }
 
 template <typename DataType, StarRegion Region>

@@ -41,6 +41,7 @@ struct MagnetizedTovVariables
   using Base::eos;
   using Base::radial_solution;
   using Base::radius;
+  using Base::star_spatial_velocity;
 
   size_t pressure_exponent;
   double cutoff_pressure;
@@ -50,9 +51,11 @@ struct MagnetizedTovVariables
       const tnsr::I<DataType, 3>& local_x, const DataType& local_radius,
       const RelativisticEuler::Solutions::TovSolution& local_radial_solution,
       const EquationsOfState::EquationOfState<true, 1>& local_eos,
+      const std::array<double, 3>& local_star_spatial_velocity,
       size_t local_pressure_exponent, double local_cutoff_pressure,
       double local_vector_potential_amplitude)
-      : Base(local_x, local_radius, local_radial_solution, local_eos),
+      : Base(local_x, local_radius, local_radial_solution, local_eos,
+             local_star_spatial_velocity),
         pressure_exponent(local_pressure_exponent),
         cutoff_pressure(local_cutoff_pressure),
         vector_potential_amplitude(local_vector_potential_amplitude) {}
@@ -239,9 +242,11 @@ class MagnetizedTovStar : public virtual evolution::initial_data::InitialData,
       double central_rest_mass_density,
       std::unique_ptr<EquationsOfState::EquationOfState<true, 1>>
           equation_of_state,
+      std::optional<std::array<double, 3>> spatial_velocity,
       RelativisticEuler::Solutions::TovCoordinates coordinate_system,
+
       size_t pressure_exponent, double cutoff_pressure_fraction,
-      double vector_potential_amplitude);
+      double vector_potential_amplitud);
 
   auto get_clone() const
       -> std::unique_ptr<evolution::initial_data::InitialData> override;
