@@ -17,11 +17,18 @@ if("${GoogleBenchmark_FOUND}" AND NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
   # Add specific libraries needed for the benchmark you are interested in.
   target_link_libraries(
     ${executable}
-    PRIVATE
+    PUBLIC
     CoordinateMaps
+    DataStructures
     Domain
     Informer
+    Hydro
     GoogleBenchmark
+    Parallel
     Spectral
+    Valencia
+    Evolution
+    ValenciaDivClean
+    Boost::boost
     )
 endif()

@@ -72,6 +72,7 @@ spectre_run_cmake() {
           -D CMAKE_Fortran_COMPILER=gfortran \
           -D MEMORY_ALLOCATOR=SYSTEM \
           -D BUILD_PYTHON_BINDINGS=ON \
+          -D GoogleBenchmark_ROOT=/usr/local/google-benchmark/1.2\
           -D MACHINE=Wheeler \
           "$@" \
           $SPECTRE_HOME
