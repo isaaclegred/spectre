@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <limits>
+#include <optional>
 
 #include "DataStructures/CachedTempBuffer.hpp"
 #include "DataStructures/DataBox/Tag.hpp"

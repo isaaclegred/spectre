@@ -4,6 +4,7 @@
 #include "PointwiseFunctions/AnalyticSolutions/Xcts/TovStar.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <ostream>
 #include <pup.h>
 #include <utility>
@@ -17,12 +18,17 @@
 #include "Options/Options.hpp"
 #include "Options/ParseOptions.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/Xcts/CommonVariables.tpp"
+#include "PointwiseFunctions/AnalyticSolutions/Xcts/WrappedGr.hpp"
 #include "PointwiseFunctions/GeneralRelativity/Tags.hpp"
 #include "PointwiseFunctions/GeneralRelativity/Tags/Conformal.hpp"
+#include "PointwiseFunctions/GeneralRelativity/IndexManipulation.hpp"
+#include "PointwiseFunctions/Hydro/ComovingMagneticField.hpp"
+#include "PointwiseFunctions/Hydro/StressEnergy.hpp"
 #include "Utilities/ConstantExpressions.hpp"
 #include "Utilities/ErrorHandling/Error.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
 #include "Utilities/Gsl.hpp"
+#include "Utilities/Math.hpp"
 
 namespace Xcts::Solutions::tov_detail {
 
@@ -265,6 +271,7 @@ void TovVariables<DataType>::operator()(
   *energy_density = get_tov_var(hydro::Tags::RestMassDensity<DataType>{});
   get(*energy_density) *=
       get(get_tov_var(hydro::Tags::SpecificEnthalpy<DataType>{}));
+  get(*energy_density) *= get(get_tov_var(hydro::Tags::LorentzFactor<DataType>{}));
   get(*energy_density) -= get(get_tov_var(hydro::Tags::Pressure<DataType>{}));
 }
 
@@ -276,16 +283,69 @@ void TovVariables<DataType>::operator()(
                         ConformalMatterScale> /*meta*/) const {
   get(*stress_trace) = 3. * get(get_tov_var(hydro::Tags::Pressure<DataType>{}));
 }
+template <typename DataType>
+void TovVariables<DataType>::operator()(
+    [[maybe_unused]] const gsl::not_null<Scalar<DataType>*>
+        magnetic_field_dot_spatial_velocity,
+    const gsl::not_null<Cache*> /*cache*/,
+    hydro::Tags::MagneticFieldDotSpatialVelocity<DataType> /*meta*/) const {
+    const auto& spatial_velocity =
+        get_tov_var(hydro::Tags::SpatialVelocity<DataType, 3, Frame::Inertial>{});
+    const auto& magnetic_field =
+        get_tov_var(hydro::Tags::MagneticField<DataType, 3, Frame::Inertial>{});
+    const auto& spatial_metric =
+        get_tov_var(gr::Tags::SpatialMetric<DataType, 3>{});
+    tenex::evaluate(magnetic_field_dot_spatial_velocity,
+                    magnetic_field(ti::I) * spatial_velocity(ti::J) *
+                        spatial_metric(ti::i, ti::j));
+}
+
+template <typename DataType>
+void TovVariables<DataType>::operator()(
+    [[maybe_unused]] const gsl::not_null<Scalar<DataType>*>
+        comoving_magnetic_field_squared,
+    [[maybe_unused]] const gsl::not_null<Cache*> cache,
+    hydro::Tags::ComovingMagneticFieldSquared<DataType> /*meta*/) const {
+    const auto& lorentz_factor =
+        get_tov_var(hydro::Tags::LorentzFactor<DataType>{});
+    const auto& magnetic_field =
+        get_tov_var(hydro::Tags::MagneticField<DataType, 3, Frame::Inertial>{});
+    const auto& spatial_metric =
+        get_tov_var(gr::Tags::SpatialMetric<DataType, 3>{});
+    const auto magnetic_field_squared =
+        tenex::evaluate(magnetic_field(ti::I) * magnetic_field(ti::J) *
+                        spatial_metric(ti::i, ti::j));
+    const auto& magnetic_field_dot_spatial_velocity = cache->get_var(
+        *this, hydro::Tags::MagneticFieldDotSpatialVelocity<DataType>{});
+    hydro::comoving_magnetic_field_squared(
+        comoving_magnetic_field_squared, magnetic_field_squared,
+        magnetic_field_dot_spatial_velocity, lorentz_factor);
+}
 
 template <typename DataType>
 void TovVariables<DataType>::operator()(
     const gsl::not_null<tnsr::I<DataType, 3>*> momentum_density,
-    const gsl::not_null<Cache*> /* cache */,
+    const gsl::not_null<Cache*> cache ,
     gr::Tags::Conformal<gr::Tags::MomentumDensity<DataType, 3>,
                         ConformalMatterScale> /*meta*/) const {
-  std::fill(momentum_density->begin(), momentum_density->end(), 0.);
-}
-
+      const auto& rest_mass_density =
+        get_tov_var(hydro::Tags::RestMassDensity<DataType>{});
+    const auto& specific_enthalpy =
+       get_tov_var(hydro::Tags::SpecificEnthalpy<DataType>{});
+    const auto& spatial_velocity =
+       get_tov_var(hydro::Tags::SpatialVelocity<DataType, 3, Frame::Inertial>{});
+    const auto& lorentz_factor =
+        get_tov_var(hydro::Tags::LorentzFactor<DataType>{});
+   const auto& magnetic_field =
+       get_tov_var(hydro::Tags::MagneticField<DataType, 3, Frame::Inertial>{});
+    const auto& magnetic_field_dot_spatial_velocity = cache->get_var(
+        *this, hydro::Tags::MagneticFieldDotSpatialVelocity<DataType>{});
+    const auto& comoving_magnetic_field_squared = cache->get_var(
+        *this, hydro::Tags::ComovingMagneticFieldSquared<DataType>{});
+    hydro::momentum_density(momentum_density, rest_mass_density,
+                            specific_enthalpy, spatial_velocity, lorentz_factor, magnetic_field,  magnetic_field_dot_spatial_velocity,
+                            comoving_magnetic_field_squared);             
+                        }
 #define DTYPE(data) BOOST_PP_TUPLE_ELEM(0, data)
 #define INSTANTIATE(_, data) template class TovVariables<DTYPE(data)>;
 

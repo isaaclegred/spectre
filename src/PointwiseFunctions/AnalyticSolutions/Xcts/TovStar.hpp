@@ -18,6 +18,7 @@
 #include "PointwiseFunctions/GeneralRelativity/Tags.hpp"
 #include "PointwiseFunctions/GeneralRelativity/Tags/Conformal.hpp"
 #include "PointwiseFunctions/InitialDataUtilities/AnalyticSolution.hpp"
+#include "PointwiseFunctions/Hydro/ComovingMagneticField.hpp"
 #include "Utilities/Gsl.hpp"
 #include "Utilities/Serialization/CharmPupable.hpp"
 #include "Utilities/TMPL.hpp"
@@ -40,7 +41,9 @@ using TovVariablesCache = cached_temp_buffer_from_typelist<tmpl::push_back<
     ::Tags::deriv<gr::Tags::Lapse<DataType>, tmpl::size_t<3>, Frame::Inertial>,
     gr::Tags::Conformal<gr::Tags::EnergyDensity<DataType>, 0>,
     gr::Tags::Conformal<gr::Tags::StressTrace<DataType>, 0>,
-    gr::Tags::Conformal<gr::Tags::MomentumDensity<DataType, 3>, 0>>>;
+    gr::Tags::Conformal<gr::Tags::MomentumDensity<DataType, 3>, 0>,
+    hydro::Tags::MagneticFieldDotSpatialVelocity<DataType>,
+    hydro::Tags::ComovingMagneticFieldSquared<DataType>>>;
 
 template <typename DataType>
 struct TovVariables : CommonVariables<DataType, TovVariablesCache<DataType>> {
@@ -151,6 +154,14 @@ struct TovVariables : CommonVariables<DataType, TovVariablesCache<DataType>> {
                   gsl::not_null<Cache*> cache,
                   gr::Tags::Conformal<gr::Tags::MomentumDensity<DataType, 3>,
                                       ConformalMatterScale> /*meta*/) const;
+ void operator()(
+      gsl::not_null<Scalar<DataType>*> magnetic_field_dot_spatial_velocity,
+      gsl::not_null<Cache*> cache,
+      hydro::Tags::MagneticFieldDotSpatialVelocity<DataType> /*meta*/) const;
+  void operator()(
+      gsl::not_null<Scalar<DataType>*> comoving_magnetic_field_squared,
+      gsl::not_null<Cache*> cache,
+      hydro::Tags::ComovingMagneticFieldSquared<DataType> /*meta*/) const;
 
  private:
   template <typename Tag>
