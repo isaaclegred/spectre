@@ -499,13 +499,17 @@ void TovVariables<DataType, Region>::operator()(
     const gsl::not_null<Scalar<DataType>*> lorentz_factor,
     const gsl::not_null<Cache*> cache,
     hydro::Tags::LorentzFactor<DataType> /*meta*/) const {
- if constexpr (Region == StarRegion::Center or
-   Region == StarRegion::Interior) {
+  if constexpr (Region == StarRegion::Center or
+                Region == StarRegion::Interior) {
     const auto& metric_angular_potential =
         get(cache->get_var(*this, Tags::MetricAngularPotential<DataType>{}));
-      get(*lorentz_factor) =  exp(2. * metric_angular_potential) * sqrt(1- square(get<0>(star_spatial_velocity)) + square(get<1>(star_spatial_velocity)) + square(get<2>(star_spatial_velocity)));
+    get(*lorentz_factor) =
+        1 / sqrt(1 - exp(2. * metric_angular_potential) *
+                         (square(get<0>(star_spatial_velocity)) +
+                          square(get<1>(star_spatial_velocity)) +
+                          square(get<2>(star_spatial_velocity))));
   } else {
-      get(*lorentz_factor) = 1.0;
+    get(*lorentz_factor) = 1.0;
   }
 }
 
@@ -515,7 +519,7 @@ void TovVariables<DataType, Region>::operator()(
     const gsl::not_null<Cache*> /*cache*/,
     hydro::Tags::SpatialVelocity<DataType, 3> /*meta*/) const {
   if constexpr (Region == StarRegion::Center or
-   Region == StarRegion::Interior) {
+                Region == StarRegion::Interior) {
     get<0>(*spatial_velocity) = get<0>(star_spatial_velocity);
     get<1>(*spatial_velocity) = get<1>(star_spatial_velocity);
     get<2>(*spatial_velocity) = get<2>(star_spatial_velocity);
