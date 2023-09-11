@@ -1,7 +1,7 @@
 # Distributed under the MIT License.
 # See LICENSE.txt for details.
 
-Executable: EvolveValenciaDivCleanFishboneMoncriefDisk
+Executable: EvolveValenciaDivCleanWithHorizon
 Testing:
   Check: parse;execute
   Timeout: 20
@@ -46,7 +46,7 @@ PhaseChangeAndTriggers:
       - CheckpointAndExitAfterWallclock:
           WallclockHours: None
 
-AnalyticSolution: &initial_data
+InitialData: &initial_data
   FishboneMoncriefDisk:
     BhMass: &BhMass 1.0
     BhDimlessSpin: &BhDimlessSpin 0.9375
