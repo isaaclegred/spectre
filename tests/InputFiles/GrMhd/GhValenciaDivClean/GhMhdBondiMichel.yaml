@@ -43,6 +43,9 @@ InitialData: &InitialData
     PolytropicExponent: 1.4
     MagFieldStrength: 1.0e-2
 
+EquationOfState:
+  FromInitialData
+
 DomainCreator:
   Sphere:
     InnerRadius: 1.9

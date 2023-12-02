@@ -87,6 +87,9 @@ InitialData:
     AdiabaticIndex: 1.3333333333333333333
     Geometry: Cylindrical
 
+EquationOfState:
+  FromInitialData
+
 EvolutionSystem:
   ValenciaDivClean:
     DampingParameter: 1.0

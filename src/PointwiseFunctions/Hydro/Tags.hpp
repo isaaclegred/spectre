@@ -38,6 +38,9 @@ struct GrmhdEquationOfState {
   using type =
       Options::Auto<std::unique_ptr<EquationsOfState::EquationOfState<true, 3>>,
                     FromInitialData>;
+  static std::string name(){
+    return "EquationOfState";
+  }
   static constexpr Options::String help = {
       "Options for the equation of state used for relativistic"
       "hydro simulations using GRMHD executables."};

@@ -44,6 +44,8 @@ InitialData: &InitialData
             PolytropicExponent: 2.0
     Coordinates: Schwarzschild
 
+EquationOfState:
+  FromInitialData
 # Note: this domain is chosen so that we only need to simulate the interior
 # of the star
 DomainCreator:
