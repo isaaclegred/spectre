@@ -580,12 +580,8 @@ struct GhValenciaDivCleanTemplateBase<
   struct factory_creation
       : tt::ConformsTo<Options::protocols::FactoryCreation> {
    private:
-    using boundary_conditions = tmpl::conditional_t<
-        use_dg_subcell,
-        tmpl::append<grmhd::GhValenciaDivClean::BoundaryConditions::
-                         standard_fd_boundary_conditions>,
-        grmhd::GhValenciaDivClean::BoundaryConditions::
-            standard_boundary_conditions>;
+    using boundary_conditions = grmhd::GhValenciaDivClean::BoundaryConditions::
+        standard_boundary_conditions;
 
    public:
     using factory_classes = tmpl::map<

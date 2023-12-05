@@ -116,9 +116,7 @@ struct EvolutionMetavars
 
   using const_global_cache_tags = tmpl::flatten<tmpl::list<
       grmhd::ValenciaDivClean::Tags::PrimitiveFromConservativeOptions,
-      gh::gauges::Tags::GaugeCondition,
-      tmpl::conditional_t<evolution::is_numeric_initial_data_v<initial_data>,
-                          tmpl::list<>, initial_data_tag>,
+      gh::gauges::Tags::GaugeCondition, initial_data_tag,
       grmhd::ValenciaDivClean::Tags::ConstraintDampingParameter,
       typename base::equation_of_state_tag,
       gh::ConstraintDamping::Tags::DampingFunctionGamma0<volume_dim,
