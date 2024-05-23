@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <blaze/Blaze.h>
 #include <boost/preprocessor/arithmetic/dec.hpp>
 #include <boost/preprocessor/arithmetic/inc.hpp>
 #include <boost/preprocessor/control/expr_iif.hpp>
@@ -15,7 +16,7 @@
 #include <pup.h>
 
 #include "DataStructures/Tensor/TypeAliases.hpp"
-#include "Options/Options.hpp"
+#include "Options/String.hpp"
 #include "PointwiseFunctions/Hydro/EquationsOfState/EquationOfState.hpp"
 #include "Utilities/Serialization/CharmPupable.hpp"
 #include "Utilities/TMPL.hpp"
@@ -170,14 +171,15 @@ class AnalyticalThermal
   };
 
   static constexpr Options::String help = {
-      "A hybrid equation of state combining a cold EOS with a simple thermal "
-      "part.  The pressure is related to the rest mass density by "
-      " p = p_cold(rho) + rho * (Gamma_th - 1) * (epsilon - "
-      "epsilon_cold(rho)), where p is the pressure, rho is the rest mass "
-      "density, epsilon is the specific internal energy, p_cold and "
-      "epsilon_cold are the pressure and specific internal energy evaluated "
-      "using the cold EOS and Gamma_th is the adiabatic index for the thermal "
-      "part."};
+      "An equation of state which extends a cold, beta-equilibrated EoS to "
+      "nonzero temperature, and arbitrary electron fraction. Uses expressions "
+      "from Raithel, Özel, and and Psaltis * DOI : 10.3847/1538-4357/ab08ea "
+      "Temperature dependence is captured by considering temperature-dependent "
+      "contributions from radiation, and matter, in both the ideal gas regieme "
+      "and at higher densities where considerations must be made for the "
+      "interactions between degeneracy and temperature.  Composition depedence "
+      "is captured by expanding around beta-equilibrium, taking into account "
+      "baryonic and electronic contributions to the energy."};
 
   using options =
       tmpl::list<ColdEos, SymmetryEnergy, SymmetryEnergySlope,
@@ -221,6 +223,9 @@ class AnalyticalThermal
     return std::numeric_limits<double>::max();
   };
 
+  /// This EOS is not barotropic
+  bool is_barotropic() const override { return false; }
+
   /// The lower bound of the rest mass density that is valid for this EOS
   double rest_mass_density_lower_bound() const override {
     return cold_eos_.rest_mass_density_lower_bound();
@@ -257,6 +262,8 @@ class AnalyticalThermal
   DataType baryonic_fermi_internal_energy(
       const DataType& rest_mass_density) const;
   template <class DataType>
+  DataType radiation_f_from_temperature(const DataType& temperature) const;
+  template <class DataType>
   DataType thermal_internal_energy(const DataType& rest_mass_density,
                                    const DataType& temperature,
                                    const DataType& electron_fraction) const;
@@ -291,7 +298,7 @@ class AnalyticalThermal
   template <class DataType, typename MassType>
   DataType a_degeneracy_log_density_derivative(
       const DataType& rest_mass_density, const DataType& electron_fraction,
-      const MassType& mass) const;
+      const MassType& mass, bool is_electron = false) const;
   double get_eta() const;
 
   template <class DataType>
@@ -301,7 +308,6 @@ class AnalyticalThermal
   template <class DataType>
   DataType symmetry_pressure_density_derivative_at_zero_temp(
       const DataType& rest_mass_density) const;
-
 
   EQUATION_OF_STATE_FORWARD_DECLARE_MEMBER_IMPLS(3)
 
@@ -314,14 +320,18 @@ class AnalyticalThermal
   double eta_;
   // This variable just happens to be the way that
   // these microscopic quantities enter all of the
-  // EoS expressions. It is not dimensionless in
-  // geometrized units
-  double hbar_over_baryon_mass_to_four_thirds_ = 1.5060;
-  double saturation_density_ = 4.53e-4;
+  // EoS expressions. Relative to 10.3847/1538-4357/ab08ea
+  // the quantity hbar always appears divided by the baryon
+  // mass to the 4/3.  This is not dimensionless in
+  // geometrized units.
+  static constexpr double hbar_over_baryon_mass_to_four_thirds_ = 1.5060;
+  // Value is somewhat lower than standard, but agrees with paper
+  static constexpr double saturation_density_ = 4.34e-4;
   double stefan_boltzmann_sigma_ =
-      2.0 * pow(M_PI, 5) / 15 *
-      pow(1 / hbar_over_baryon_mass_to_four_thirds_, 3);
-  double electron_mass_over_baryon_mass_ = 5.44e-4;
+      pow(M_PI, 2) / 60 * pow(1 / hbar_over_baryon_mass_to_four_thirds_, 3);
+  static constexpr double electron_mass_over_baryon_mass_ = 5.44e-4;
+  // This is fixed to agree with the paper
+  static constexpr double baryon_mass_in_mev_ = 939.57;
   double K_ =
       cbrt(3 * square(M_PI)) * hbar_over_baryon_mass_to_four_thirds_ * 0.25;
 };

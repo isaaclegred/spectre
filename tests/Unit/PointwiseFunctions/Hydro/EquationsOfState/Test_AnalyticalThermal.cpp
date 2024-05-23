@@ -35,23 +35,19 @@ namespace {
 //       "HybridEos", "hybrid_polytrope", dv_for_size, 100.0, 4.0 / 3.0,
 //       5.0 / 3.0);
 // }
-
-void check_exact_polytrope() {
+// Matches implementation
+double baryon_mass_in_mev_ = 939.57;
+double saturation_density_ = 4.34e-4;
+double saturation_number_density_in_fm_3 = .16;
+namespace EoS = EquationsOfState;
+// Comparing to results in the paper is only possible to
+// the precision of constants like nuclear saturation density
+// (n_sat ~.16 fm^-3)
+Approx paper_approx = Approx::custom().epsilon(1e-3);
+void check_creation() {
+  // Check that the EoS can be created and copied correctly, and that the
+  // EoS has sane behavior out of equilibrium.
   EquationsOfState::PolytropicFluid<true> cold_eos{100.0, 2.0};
-  const Scalar<double> rho_c{1.0e-3};
-  const auto p_c = cold_eos.pressure_from_density(rho_c);
-  CHECK(get(p_c) == approx(1.0e-4));
-  const auto eps_c = cold_eos.specific_internal_energy_from_density(rho_c);
-  CHECK(get(eps_c) == approx(1.0e-1));
-  const auto h_c = hydro::relativistic_specific_enthalpy(rho_c, eps_c, p_c);
-  CHECK(get(h_c) == approx(1.0 + 1.0e-1 + 1.0e-1));
-  const auto chi_c = cold_eos.chi_from_density(rho_c);
-  CHECK(get(chi_c) == approx(2.0e-1));
-  const auto p_c_kappa_c_over_rho_sq =
-      cold_eos.kappa_times_p_over_rho_squared_from_density(rho_c);
-  CHECK(get(p_c_kappa_c_over_rho_sq) == 0.0);
-  const auto c_s_sq = (get(chi_c) + get(p_c_kappa_c_over_rho_sq)) / get(h_c);
-  CHECK(c_s_sq == approx(1.0 / 6.0));
   EquationsOfState::AnalyticalThermal<EquationsOfState::PolytropicFluid<true>>
       eos{{100.0, 2.0}, 1.5, .1, .1, 1.0, .85};
   TestHelpers::EquationsOfState::test_get_clone(eos);
@@ -60,44 +56,75 @@ void check_exact_polytrope() {
       other_eos{{100.0, 3.0}, 1.5, .1, .1, 1.0, .89};
   const auto other_type_eos =
       EquationsOfState::PolytropicFluid<true>{100.0, 2.0};
-  const Scalar<double> rho{.001};
   CHECK(eos == eos);
   CHECK(eos != other_eos);
   CHECK(eos != other_type_eos);
-  const Scalar<double> eps{.2};
-  const Scalar<double> temp{.01};
-  const Scalar<double> temp_times_two{.02};
-  const Scalar<double> elec_frac{.05};
-  const Scalar<double> small_rho { 1.0e-6 }
-
-  const auto p = eos.pressure_from_density_and_energy(rho, eps, elec_frac);
-  CHECK(get(p) == approx(1e-4));
-  CHECK(get(p) >= get(p_c));
-  const auto h = hydro::relativistic_specific_enthalpy(rho, eps, p);
-  CHECK(get(h) == approx(1.0));
-  CHECK(get(h) >= get(h_c));
-  CHECK(get(eos.pressure_from_density_and_temperature(rho, temp, elec_frac)) >=
-        get(p_c));
-  CHECK(get(eos.pressure_from_density_and_temperature(rho, temp_times_two,
-                                                      elec_frac)) /
-            square(get(temp_times_two)) ==
-        approx(1.5));
-
-  CHECK(get(eos.pressure_from_density_and_temperature(rho, temp_times_two,
-                                                      elec_frac)) /
-            square(get(temp_times_two)) ==
-        approx(1.5));
+  // Sanity checks
+  const Scalar<double> rho{1.0e-3};
+  const Scalar<double> zero_temp{0.0};
+  const Scalar<double> temp{0.01};
+  const Scalar<double> elec_frac{.1};
+  // Out of equilibrium energy must be greater or equal to beta-equalibrium
+  // energy
+  CHECK(get(cold_eos.specific_internal_energy_from_density(rho)) <=
+        get(eos.specific_internal_energy_from_density_and_temperature(
+            rho, zero_temp, elec_frac)));
+  // energy at nonzero temperature must be greater or equal to energy at zero
+  // temp
   CHECK(get(eos.specific_internal_energy_from_density_and_temperature(
-            rho, temp, elec_frac)) >= get(eps_c));
-  const auto temp_recovered =
-      eos.temperature_from_density_and_energy(rho, eps, elec_frac);
-  CHECK(get(temp_recovered) == approx(.01));
-  // Check consistency of eps(rho, T(rho, eps', Ye), Ye) = eps'
-  CHECK(get(eos.specific_internal_energy_from_density_and_temperature(
-            rho, temp_recovered, elec_frac)) == approx(get(eps)));
-  const auto speed_of_sound =
-      eos.sound_speed_squared_from_density_and_temperature(rho, eps, elec_frac);
-  CHECK(get(speed_of_sound) == approx(.33));
+            rho, zero_temp, elec_frac)) <=
+        get(eos.specific_internal_energy_from_density_and_temperature(
+            rho, temp, elec_frac)));
+}
+
+void check_compare_to_paper_results() {
+  double cold_eos_polytropic_constant = 100.0;
+  double cold_eos_polytropic_exponent = 2.0;
+  double S_0 = 31.57 / baryon_mass_in_mev_;
+  double L = 47.10 / baryon_mass_in_mev_;
+  double gamma = .41;
+  double n_0 = saturation_density_ * .08 / .16;
+  double alpha = .6;
+  EquationsOfState::PolytropicFluid<true> cold_eos{
+      cold_eos_polytropic_constant, cold_eos_polytropic_exponent};
+  // Particular representation of the sfho eos
+  EoS::AnalyticalThermal<EoS::PolytropicFluid<true>> eos_sfho_paper{
+      cold_eos, S_0, L, gamma, n_0, alpha};
+
+  // Particular values provided by Carolyn Raithel to test against
+  const Scalar<double> rho{saturation_density_};
+  const Scalar<double> temp{10.0 / baryon_mass_in_mev_};
+  const Scalar<double> elec_frac{.25};
+  const Scalar<double> small_rho{saturation_density_};
+
+  const double thermal_specific_internal_energy_provided =
+      3.593102 / baryon_mass_in_mev_;
+  const double out_of_equalibrium_specific_internal_energy_provided =
+      1.69207e1 / baryon_mass_in_mev_;
+  const double thermal_pressure_provided = 4.587350e-01 / baryon_mass_in_mev_ *
+                                           saturation_density_ /
+                                           saturation_number_density_in_fm_3;
+  const double out_of_equalibrium_pressure_provided =
+      4.161009e-1 / baryon_mass_in_mev_ * saturation_density_ /
+      saturation_number_density_in_fm_3;
+
+  const auto p = eos_sfho_paper.pressure_from_density_and_temperature(
+      small_rho, temp, elec_frac);
+  const auto pc = cold_eos.pressure_from_density(small_rho);
+
+  CHECK(get(p) - get(pc) == paper_approx(thermal_pressure_provided +
+                                         out_of_equalibrium_pressure_provided));
+
+  const auto eps =
+      eos_sfho_paper.specific_internal_energy_from_density_and_temperature(
+          small_rho, temp, elec_frac);
+  const auto epsc = cold_eos.specific_internal_energy_from_density(small_rho);
+  CHECK(get(eps) - get(epsc) ==
+        paper_approx(thermal_specific_internal_energy_provided +
+                     out_of_equalibrium_specific_internal_energy_provided));
+  // Check temperature from energy is computed correctly
+  CHECK(get(eos_sfho_paper.temperature_from_density_and_energy(
+            small_rho, eps, elec_frac)) == paper_approx(get(temp)));
 }
 
 void check_bounds() {
@@ -121,14 +148,45 @@ void check_bounds() {
                           rest_mass_density, electron_fraction));
   CHECK(max_double == eos.temperature_upper_bound());
 }
-
+void check_random_polytrope() {
+  // Compare against python implementation
+  // Relativistic checks
+  double cold_eos_polytropic_constant = 100.0;
+  double cold_eos_polytropic_exponent = 2.0;
+  double S_0 = 31.57 / baryon_mass_in_mev_;
+  double L = 47.10 / baryon_mass_in_mev_;
+  double gamma = .41;
+  double n_0 = saturation_density_ * .08 / .16;
+  double alpha = .6;
+  DataVector d_for_size{5};
+  INFO("Testing get clone...");
+  TestHelpers::EquationsOfState::test_get_clone(
+      EoS::AnalyticalThermal<EoS::PolytropicFluid<true>>{
+          EquationsOfState::PolytropicFluid<true>(cold_eos_polytropic_constant,
+                                                  cold_eos_polytropic_exponent),
+          S_0, L, gamma, n_0, alpha});
+  INFO("Testing against python implementation..");
+  TestHelpers::EquationsOfState::check(
+      EoS::AnalyticalThermal<EoS::PolytropicFluid<true>>{
+          EquationsOfState::PolytropicFluid<true>(cold_eos_polytropic_constant,
+                                                  cold_eos_polytropic_exponent),
+          S_0, L, gamma, n_0, alpha},
+      "AnalyticalThermal", "analytical_thermal_polytrope", d_for_size,
+      cold_eos_polytropic_constant, cold_eos_polytropic_exponent, S_0, L, gamma,
+      n_0, alpha);
+}
 }  // namespace
 
 SPECTRE_TEST_CASE("Unit.PointwiseFunctions.EquationsOfState.AnalyticalThermal",
                   "[Unit][EquationsOfState]") {
+  register_derived_classes_with_charm<EoS::EquationOfState<true, 3>>();
+  register_derived_classes_with_charm<EoS::EquationOfState<true, 2>>();
+  register_derived_classes_with_charm<EoS::EquationOfState<true, 1>>();
   pypp::SetupLocalPythonEnvironment local_python_env{
       "PointwiseFunctions/Hydro/EquationsOfState/"};
-  // check_random_polytrope<true>();
-  check_exact_polytrope();
+
+  check_creation();
   check_bounds();
+  check_compare_to_paper_results();
+  check_random_polytrope();
 }
