@@ -825,6 +825,16 @@ def transform_volume_data_command(
     datasets 'Shift(_x,_y,_z)' from the volume data and pass them to the kernel
     function for the 'shift' argument.
     """
+    # Script should be a noop if input files are empty
+    if not h5files:
+        return
+
+    You will be prompted to specify dataset names for input and output tensors,
+    unless you specify them with '--input-name/-i'. For example, if you specify
+    '-i shift=Shift' for the kernel function above, the code will read the
+    datasets 'Shift(_x,_y,_z)' from the volume data and pass them to the kernel
+    function for the 'shift' argument.
+    """
     open_h5_files = [
         spectre_h5.H5File(filename, "r" if integrate else "a")
         for filename in h5files
