@@ -189,7 +189,15 @@ class RiemannProblem : public evolution::initial_data::InitialData,
   struct ShiftX {
     using type = double;
     static constexpr Options::String help = {
-        "The value of the x-component of the shift, beta^x. Standard is 0."};
+      "The value of the x-component of the shift, beta^x. Standard is 0."}
+      struct LeftElectronFraction {
+    using type = double;
+    static constexpr Options::String help = {
+        "The value of the electron fraction in the left half-domain"};
+        struct RightElectronFraction {
+    using type = double;
+    static constexpr Options::String help = {
+        "The value of the electron fraction in the right half-domain"};
   };
 
   using options =
@@ -217,7 +225,8 @@ class RiemannProblem : public evolution::initial_data::InitialData,
                  const std::array<double, 3>& right_spatial_velocity,
                  const std::array<double, 3>& left_magnetic_field,
                  const std::array<double, 3>& right_magnetic_field,
-                 double lapse, double shift);
+                 double lapse, double shift,double left_electron_fraction,
+                 double right_electron_fraction);
 
   auto get_clone() const
       -> std::unique_ptr<evolution::initial_data::InitialData> override;
@@ -354,5 +363,7 @@ class RiemannProblem : public evolution::initial_data::InitialData,
        std::numeric_limits<double>::signaling_NaN()}};
   double lapse_ = std::numeric_limits<double>::signaling_NaN();
   double shift_ = std::numeric_limits<double>::signaling_NaN();
+        double left_electron_fraction = std::numeric_limits<double>::signaling_NaN();
+        double right_electron_fraction = std::numeric_limits<double>::signaling_NaN();
 };
 }  // namespace grmhd::AnalyticData

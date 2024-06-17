@@ -26,7 +26,8 @@ RiemannProblem::RiemannProblem(
     const std::array<double, 3>& right_spatial_velocity,
     const std::array<double, 3>& left_magnetic_field,
     const std::array<double, 3>& right_magnetic_field, const double lapse,
-    const double shift)
+    const double shift, const double left_electron_fraction,
+    const double right_electron_fraction)
     : equation_of_state_(adiabatic_index),
       adiabatic_index_(adiabatic_index),
       left_rest_mass_density_(left_rest_mass_density),
@@ -38,7 +39,10 @@ RiemannProblem::RiemannProblem(
       left_magnetic_field_(left_magnetic_field),
       right_magnetic_field_(right_magnetic_field),
       lapse_(lapse),
-      shift_(shift) {}
+      shift_(shift),
+      left_electron_fraction_(left_electron_fraction),
+      right_electron_fraction_(right_electron_fraction){}
+
 
 std::unique_ptr<evolution::initial_data::InitialData>
 RiemannProblem::get_clone() const {
@@ -62,6 +66,8 @@ void RiemannProblem::pup(PUP::er& p) {
   p | right_magnetic_field_;
   p | lapse_;
   p | shift_;
+  p | left_electron_fraction_;
+  p | right_electron_fraction_;
 }
 
 template <typename DataType>
@@ -85,8 +91,14 @@ tuples::TaggedTuple<hydro::Tags::ElectronFraction<DataType>>
 RiemannProblem::variables(
     const tnsr::I<DataType, 3>& x,
     tmpl::list<hydro::Tags::ElectronFraction<DataType>> /*meta*/) const {
+  auto electron_fraction = make_with_value<Scalar<DataType>>(x, 0.0);
+  if (get_element(get<0>(x), i) <= discontinuity_location_) {
+    get_element(get(electron_fraction), i) = left_electron_fraction_;
+    } else {
+      get_element(get(electron_fraction), i) = right_electron_fraction_;
+    }
 
-    return {make_with_value<Scalar<DataType>>(x, 0.1)};
+  return electron_fraction;
 }
 
 template <typename DataType>
@@ -219,7 +231,9 @@ bool operator==(const RiemannProblem& lhs, const RiemannProblem& rhs) {
          lhs.right_spatial_velocity_ == rhs.right_spatial_velocity_ and
          lhs.left_magnetic_field_ == rhs.left_magnetic_field_ and
          lhs.right_magnetic_field_ == rhs.right_magnetic_field_ and
-         lhs.lapse_ == rhs.lapse_ and lhs.shift_ == rhs.shift_;
+         lhs.lapse_ == rhs.lapse_ and lhs.shift_ == rhs.shift_ and
+      lhs.left_electron_fraction_ == rhs.left_electron_fraction_ and
+      lhs.right_electron_fraction_ == rhs.right_electron_fraction_;
 }
 
 bool operator!=(const RiemannProblem& lhs, const RiemannProblem& rhs) {
