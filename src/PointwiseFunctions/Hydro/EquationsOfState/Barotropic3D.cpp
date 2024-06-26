@@ -8,7 +8,9 @@
 
 #include "DataStructures/DataVector.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
+#include "PointwiseFunctions/Hydro/EquationsOfState/AnalyticalThermal.hpp"
 #include "PointwiseFunctions/Hydro/EquationsOfState/Enthalpy.hpp"
+#include "PointwiseFunctions/Hydro/EquationsOfState/Equilibrated1D.hpp"
 #include "PointwiseFunctions/Hydro/EquationsOfState/PiecewisePolytropicFluid.hpp"
 #include "PointwiseFunctions/Hydro/EquationsOfState/PolytropicFluid.hpp"
 #include "PointwiseFunctions/Hydro/EquationsOfState/Spectral.hpp"
@@ -121,5 +123,7 @@ template class Barotropic3D<Enthalpy<PolytropicFluid<true>>>;
 template class Barotropic3D<Enthalpy<Spectral>>;
 template class Barotropic3D<Enthalpy<Enthalpy<Spectral>>>;
 template class Barotropic3D<Enthalpy<Enthalpy<Enthalpy<Spectral>>>>;
+template class Barotropic3D<Equilibrated1D<
+    PolytropicFluid<true>, AnalyticalThermal<PolytropicFluid<true>>>>;
 
 }  // namespace EquationsOfState

@@ -43,6 +43,8 @@ template <bool IsRelativistic>
 class Tabulated3D;
 template <typename ColdEos>
 class AnalyticalThermal;
+template <typename ColdEos, typename ElectronFractionComputer>
+class Equilibrated1D;
 }  // namespace EquationsOfState
 /// \endcond
 
@@ -58,7 +60,9 @@ struct DerivedClasses<true, 1> {
   using type = tmpl::list<
       Enthalpy<Enthalpy<Enthalpy<Spectral>>>, Enthalpy<Enthalpy<Spectral>>,
       Enthalpy<Spectral>, Enthalpy<PolytropicFluid<true>>,
-      PiecewisePolytropicFluid<true>, PolytropicFluid<true>, Spectral>;
+      PiecewisePolytropicFluid<true>, PolytropicFluid<true>, Spectral,
+      Equilibrated1D<PolytropicFluid<true>,
+                     AnalyticalThermal<PolytropicFluid<true>>>>;
 };
 
 template <>
@@ -847,16 +851,16 @@ bool operator!=(const EquationOfState<IsRelLhs, ThermoDimLhs>& lhs,
 
 #define EQUATION_OF_STATE_MEMBER_DEFINITIONS_HELPER_2(r, ARGS, FUNCTION_NAME) \
   EQUATION_OF_STATE_MEMBER_DEFINITIONS_HELPER(                                \
-      BOOST_PP_TUPLE_ELEM(0, ARGS), BOOST_PP_TUPLE_ELEM(1, ARGS),             \
-      BOOST_PP_TUPLE_ELEM(2, ARGS), BOOST_PP_TUPLE_ELEM(3, ARGS),             \
-      FUNCTION_NAME)
+      SINGLE_ARG BOOST_PP_TUPLE_ELEM(0, ARGS),                                \
+      SINGLE_ARG BOOST_PP_TUPLE_ELEM(1, ARGS), BOOST_PP_TUPLE_ELEM(2, ARGS),  \
+      BOOST_PP_TUPLE_ELEM(3, ARGS), FUNCTION_NAME)
 /// \endcond
 
 #define EQUATION_OF_STATE_MEMBER_DEFINITIONS(TEMPLATE, DERIVED, DATA_TYPE, \
                                              DIM)                          \
   BOOST_PP_LIST_FOR_EACH(                                                  \
       EQUATION_OF_STATE_MEMBER_DEFINITIONS_HELPER_2,                       \
-      (TEMPLATE, DERIVED, DATA_TYPE, DIM),                                 \
+      ((TEMPLATE), (DERIVED), DATA_TYPE, DIM),                             \
       BOOST_PP_TUPLE_TO_LIST(BOOST_PP_TUPLE_ELEM(                          \
           BOOST_PP_SUB(DIM, 1),                                            \
           (EQUATION_OF_STATE_FUNCTIONS_1D, EQUATION_OF_STATE_FUNCTIONS_2D, \

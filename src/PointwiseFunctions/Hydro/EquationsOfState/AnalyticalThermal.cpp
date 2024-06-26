@@ -87,6 +87,17 @@ void AnalyticalThermal<ColdEquationOfState>::pup(PUP::er& p) {
   p | alpha_;
   p | eta_;
 }
+
+template <class ColdEos>
+template <class DataType>
+Scalar<DataType> AnalyticalThermal<ColdEos>::
+    equilibrium_electron_fraction_from_density_temperature(
+        const Scalar<DataType>& rest_mass_density,
+        const Scalar<DataType>& /*temperature*/) const {
+  return Scalar<DataType>{
+      beta_equalibrium_proton_fraction(get(rest_mass_density))};
+}
+
 template <class ColdEos>
 double AnalyticalThermal<ColdEos>::get_eta() const {
   return 5.0 / 9.0 * (L_ - 3 * S0_ * gamma_) /

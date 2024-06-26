@@ -10,6 +10,7 @@
 #include "PointwiseFunctions/Hydro/EquationsOfState/DarkEnergyFluid.hpp"
 #include "PointwiseFunctions/Hydro/EquationsOfState/Enthalpy.hpp"
 #include "PointwiseFunctions/Hydro/EquationsOfState/EquationOfState.hpp"
+#include "PointwiseFunctions/Hydro/EquationsOfState/Equilibrated1D.hpp"
 #include "PointwiseFunctions/Hydro/EquationsOfState/Equilibrium3D.hpp"
 #include "PointwiseFunctions/Hydro/EquationsOfState/HybridEos.hpp"
 #include "PointwiseFunctions/Hydro/EquationsOfState/IdealFluid.hpp"

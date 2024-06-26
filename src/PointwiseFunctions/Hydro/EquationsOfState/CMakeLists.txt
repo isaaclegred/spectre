@@ -17,6 +17,7 @@ spectre_target_sources(
   Spectral.cpp
   Tabulated3d.cpp
   AnalyticalThermal.cpp
+  Equilibrated1D.cpp
   )
 
 spectre_target_headers(
@@ -27,6 +28,7 @@ spectre_target_headers(
   Barotropic3D.hpp
   DarkEnergyFluid.hpp
   Enthalpy.hpp
+  Equilibrated1D.hpp
   Equilibrium3D.hpp
   EquationOfState.hpp
   Factory.hpp

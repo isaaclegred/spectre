@@ -257,6 +257,12 @@ class AnalyticalThermal
     return cold_eos_.specific_enthalpy_lower_bound();
   }
 
+  /// The electron fraction in beta-equilibrium for this EOS at a given density
+  template <class DataType>
+  Scalar<DataType> equilibrium_electron_fraction_from_density_temperature(
+      const Scalar<DataType>& rest_mass_density,
+      const Scalar<DataType>& temperature) const;
+
  private:
   template <class DataType>
   DataType baryonic_fermi_internal_energy(
