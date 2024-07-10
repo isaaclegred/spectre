@@ -21,6 +21,8 @@
 #include "Utilities/Serialization/CharmPupable.hpp"
 #include "Utilities/TMPL.hpp"
 
+#include "Parallel/Printf/Printf.hpp"
+
 /// \cond
 class DataVector;
 /// \endcond
@@ -132,8 +134,14 @@ class AnalyticalThermal
   static constexpr size_t thermodynamic_dim = 3;
   static constexpr bool is_relativistic = ColdEquationOfState::is_relativistic;
 
+  static std::string name() {
+     return "AnalyticalThermal(" + pretty_type::name<ColdEquationOfState>() + ")";
+   }
   struct ColdEos {
     using type = ColdEquationOfState;
+    static std::string name() {
+      return pretty_type::short_name<ColdEquationOfState>();
+    }
     static constexpr Options::String help = {"Cold equation of state"};
   };
 
@@ -210,7 +218,7 @@ class AnalyticalThermal
   bool is_equal(const EquationOfState<is_relativistic, 3>& rhs) const override;
 
   /// The lower bound of the electron fraction that is valid for this EOS
-  double electron_fraction_lower_bound() const override { return 0.0; }
+  double electron_fraction_lower_bound() const override { return 1e-3; }
 
   /// The upper bound of the electron fraction that is valid for this EOS
   double electron_fraction_upper_bound() const override { return 0.5; }
@@ -222,6 +230,9 @@ class AnalyticalThermal
   double temperature_upper_bound() const override {
     return std::numeric_limits<double>::max();
   };
+
+    /// \brief Returns `true` if the EOS is in beta-equilibrium
+  bool is_equilibrium() const override { return false; }
 
   /// This EOS is not barotropic
   bool is_barotropic() const override { return false; }
@@ -240,8 +251,18 @@ class AnalyticalThermal
   /// at the given rest mass density \f$\rho\f$
   double specific_internal_energy_lower_bound(
       const double rest_mass_density,
-      const double /*electron_fraction*/) const override {
-    return cold_eos_.specific_internal_energy_lower_bound(rest_mass_density);
+      const double electron_fraction) const override {
+    // Primitive recovery can fail by factors smaller than machine
+    // precision if we don't make this large enough
+    if (electron_fraction < 0.0 or rest_mass_density < 0.0){
+      Parallel::printf("rest mass density on failure %.10e\n", rest_mass_density);
+      Parallel::printf("electron fraction on failure %.10e\n", electron_fraction);
+
+    }
+    return (1.0 + std::numeric_limits<double>::epsilon()) *
+        get(specific_internal_energy_from_density_and_temperature(
+        Scalar<double>{rest_mass_density}, Scalar<double>{0.0},
+        Scalar<double>{electron_fraction}));
   }
 
   /// The upper bound of the specific internal energy that is valid for this EOS
@@ -258,10 +279,14 @@ class AnalyticalThermal
   }
 
   /// The electron fraction in beta-equilibrium for this EOS at a given density
-  template <class DataType>
-  Scalar<DataType> equilibrium_electron_fraction_from_density_temperature(
-      const Scalar<DataType>& rest_mass_density,
-      const Scalar<DataType>& temperature) const;
+  Scalar<double> equilibrium_electron_fraction_from_density_temperature(
+      const Scalar<double>& rest_mass_density,
+      const Scalar<double>& temperature) const;
+
+  /// The electron fraction in beta-equilibrium for this EOS at a given density
+  Scalar<DataVector> equilibrium_electron_fraction_from_density_temperature(
+      const Scalar<DataVector>& rest_mass_density,
+      const Scalar<DataVector>& temperature) const;
 
  private:
   template <class DataType>

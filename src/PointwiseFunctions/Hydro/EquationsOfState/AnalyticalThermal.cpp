@@ -13,6 +13,8 @@
 #include "PointwiseFunctions/Hydro/EquationsOfState/Factory.hpp"
 #include "Utilities/ConstantExpressions.hpp"
 
+#include "Parallel/Printf/Printf.hpp"
+
 namespace {
 // Used for the symmetry energy to transition to a constant value at low
 // densities
@@ -88,13 +90,18 @@ void AnalyticalThermal<ColdEquationOfState>::pup(PUP::er& p) {
   p | eta_;
 }
 
-template <class ColdEos>
-template <class DataType>
-Scalar<DataType> AnalyticalThermal<ColdEos>::
+template <class ColdEos>Scalar<double> AnalyticalThermal<ColdEos>::
     equilibrium_electron_fraction_from_density_temperature(
-        const Scalar<DataType>& rest_mass_density,
-        const Scalar<DataType>& /*temperature*/) const {
-  return Scalar<DataType>{
+        const Scalar<double>& rest_mass_density,
+        const Scalar<double>& /*temperature*/) const {
+  return Scalar<double>{
+      beta_equalibrium_proton_fraction(get(rest_mass_density))};
+}
+template <class ColdEos>Scalar<DataVector> AnalyticalThermal<ColdEos>::
+    equilibrium_electron_fraction_from_density_temperature(
+        const Scalar<DataVector>& rest_mass_density,
+        const Scalar<DataVector>& /*temperature*/) const {
+  return Scalar<DataVector>{
       beta_equalibrium_proton_fraction(get(rest_mass_density))};
 }
 
@@ -149,6 +156,9 @@ DataType AnalyticalThermal<ColdEos>::thermal_internal_energy(
       rest_mass_density, make_with_value<DataType>(rest_mass_density, 0.5),
       dirac_effective_mass(rest_mass_density)));
   // Electron fraction fixed to 1 here to match paper results
+  if (min(electron_fraction) == 0.0){
+    Parallel::printf("Bad things are about to happen \n");
+  }
   const DataType electron_degenerate =
       electron_fraction *
       a_degeneracy(static_cast<DataType>(electron_fraction * rest_mass_density),
@@ -289,8 +299,10 @@ template <typename ColdEos>
 template <typename DataType>
 DataType AnalyticalThermal<ColdEos>::dirac_effective_mass(
     const DataType& rest_mass_density) const {
-  return 930.6 / baryon_mass_in_mev_ *
-         invsqrt(1 + pow((rest_mass_density / n0_), alpha_ * 2));
+  if(min(rest_mass_density) <= 0.0){
+    return make_with_value<DataType>(rest_mass_density, 930.6 / baryon_mass_in_mev_);}
+  return static_cast<DataType>(930.6 / baryon_mass_in_mev_ *
+                               invsqrt(1 + pow((rest_mass_density / n0_), alpha_ * 2)));
 }
 
 template <typename ColdEos>
@@ -374,11 +386,25 @@ template <typename DataType, typename MassType>
 DataType AnalyticalThermal<ColdEos>::a_degeneracy(
     const DataType& rest_mass_density, const DataType& particle_fraction,
     const MassType& mass) const {
+  if  (min(rest_mass_density) < 0.0){
+    Parallel::printf("about to fail in a_degeneracy \n");
+    Parallel::printf("rest mass density %s",rest_mass_density );
+    Parallel::printf("particle fraction %s",particle_fraction );
+    Parallel::printf("mass  %s", mass);
+
+  }
   const DataType kinetic_common_factor =
       pow(3 * square(M_PI) * particle_fraction * rest_mass_density, 2.0 / 3.0) *
       square(hbar_over_baryon_mass_to_four_thirds_);
-  return square(M_PI) / 2 * sqrt(kinetic_common_factor + square(mass)) /
-         kinetic_common_factor;
+  if(min(kinetic_common_factor + square(mass)) < 0.0 or min(kinetic_common_factor)==0.0)
+  {
+    Parallel::printf("rest mass density %.10e",rest_mass_density );
+    Parallel::printf("particle fraction %.10e",particle_fraction );
+    Parallel::printf("mass  %.10e", mass);
+  }
+  return static_cast<DataType>(
+      square(M_PI) / 2 * sqrt(kinetic_common_factor + square(mass)) /
+      kinetic_common_factor);
 }
 template <class ColdEos>
 template <class DataType, class MassType>
@@ -548,6 +574,10 @@ Scalar<DataType> AnalyticalThermal<ColdEquationOfState>::
       get(rest_mass_density), get(electron_fraction));
   const DataType thermal_energy_needed =
       get(specific_internal_energy) - cold_energy - composition_energy;
+  if (min(thermal_energy_needed) < std::numeric_limits<double>::epsilon()){
+    // Rootfind will likely faill
+    return make_with_value<Scalar<DataType>>(rest_mass_density, 0.0);
+  }
   const auto radiation_prefactor = [this, &rest_mass_density](
                                        const double& temperature, size_t i) {
     if constexpr (std::is_same_v<DataType, double>) {
