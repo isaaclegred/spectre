@@ -82,6 +82,7 @@ struct InitializeFixedSources : tt::ConformsTo<::amr::protocols::Projector> {
       domain::Tags::Coordinates<Dim, Frame::Inertial>, BackgroundTag,
       elliptic::dg::Tags::Massive, domain::Tags::Mesh<Dim>,
       domain::Tags::DetInvJacobian<Frame::ElementLogical, Frame::Inertial>,
+      domain::Tags::InverseJacobian<3, Frame::ElementLogical, Frame::Inertial>,
       Parallel::Tags::Metavariables>;
 
   template <typename Background, typename Metavariables, typename... AmrData>
@@ -89,8 +90,10 @@ struct InitializeFixedSources : tt::ConformsTo<::amr::protocols::Projector> {
       const gsl::not_null<typename fixed_sources_tag::type*> fixed_sources,
       const tnsr::I<DataVector, Dim>& inertial_coords,
       const Background& background, const bool massive, const Mesh<Dim>& mesh,
-      const Scalar<DataVector>& det_inv_jacobian, const Metavariables& /*meta*/,
-      const AmrData&... /*amr_data*/) {
+      const Scalar<DataVector>& det_inv_jacobian,
+      const InverseJacobian<DataVector, 3, Frame::ElementLogical,
+                            Frame::Inertial>& inv_jacobian,
+      const Metavariables& /*meta*/, const AmrData&... /*amr_data*/) {
     // Retrieve the fixed-sources of the elliptic system from the background,
     // which (along with the boundary conditions) define the problem we want to
     // solve.
@@ -99,9 +102,21 @@ struct InitializeFixedSources : tt::ConformsTo<::amr::protocols::Projector> {
     *fixed_sources =
         call_with_dynamic_type<Variables<typename fixed_sources_tag::tags_list>,
                                tmpl::at<factory_classes, Background>>(
-            &background, [&inertial_coords](const auto* const derived) {
-              return variables_from_tagged_tuple(derived->variables(
-                  inertial_coords, typename fixed_sources_tag::tags_list{}));
+            &background, [&inertial_coords, &mesh,
+                          &inv_jacobian](const auto* const derived) {
+              // Classes with background fields take the mesh and inverse
+              // Jacobian to be able to compute numerical derivatives
+              if constexpr (std::is_same_v<typename System::background_fields,
+                                           tmpl::list<>>) {
+                // Classes without `background_fields` do  not compute numerical
+                // derivatives
+                return variables_from_tagged_tuple(derived->variables(
+                    inertial_coords, typename fixed_sources_tag::tags_list{}));
+              } else {
+                return variables_from_tagged_tuple(derived->variables(
+                    inertial_coords, mesh, inv_jacobian,
+                    typename fixed_sources_tag::tags_list{}));
+              }
             });
 
     // Apply DG mass matrix to the fixed sources if the DG operator is massive
