@@ -1,7 +1,7 @@
 # Distributed under the MIT License.
 # See LICENSE.txt for details.
 
-set(EXECUTABLE "SolveBnsInitialDatas")
+set(EXECUTABLE "SolveBnsInitialData")
 
 add_spectre_executable(
   ${EXECUTABLE}

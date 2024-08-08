@@ -55,12 +55,14 @@ using TovVariablesCache = cached_temp_buffer_from_typelist<tmpl::list<
     ::Tags::deriv<gr::Tags::Shift<DataType, 3>, tmpl::size_t<3>,
                   Frame::Inertial>,
     BnsInitialData::Tags::RotationalShift<DataType>,
-    BnsInitialData::Tags::DerivLogLapseOverSpecificEnthalpy<DataType>,
+    BnsInitialData::Tags::DerivLogLapseTimesDensityOverSpecificEnthalpy<
+        DataType>,
     BnsInitialData::Tags::RotationalShiftStress<DataType>,
     gr::Tags::SpatialMetric<DataType, 3>,
     gr::Tags::InverseSpatialMetric<DataType, 3>,
-    gr::Tags::SpatialChristoffelSecondKindContracted<DataType, 3>>>;
-
+    gr::Tags::SpatialChristoffelSecondKindContracted<DataType, 3>,
+    hydro::Tags::RestMassDensity<DataType>,
+    hydro::Tags::SpecificEnthalpy<DataType>>>;
 template <typename DataType, StarRegion Region = StarRegion::Interior>
 struct TovVariables
     : RelativisticEuler::Solutions::tov_detail::TovVariables<DataType, Region> {
@@ -121,6 +123,12 @@ struct TovVariables
   void operator()(gsl::not_null<Scalar<DataType>*> lapse,
                   gsl::not_null<Cache*> cache,
                   gr::Tags::Lapse<DataType> /*meta*/) const;
+  void operator()(gsl::not_null<Scalar<DataType>*> rest_mass_density,
+                  gsl::not_null<Cache*> cache,
+                  hydro::Tags::RestMassDensity<DataType> /*meta*/) const;
+  void operator()(gsl::not_null<Scalar<DataType>*> specifc_enthalpy,
+                  gsl::not_null<Cache*> cache,
+                  hydro::Tags::SpecificEnthalpy<DataType> /*meta*/) const;
   void operator()(gsl::not_null<tnsr::i<DataType, 3>*> deriv_lapse,
                   gsl::not_null<Cache*> cache,
                   ::Tags::deriv<gr::Tags::Lapse<DataType>, tmpl::size_t<3>,
@@ -195,11 +203,6 @@ class TovStar : public elliptic::analytic_data::Background,
   RelEulerTovStar tov_star_;
 
  public:
-  struct EulerEnthalpyConstant {
-    using type = double;
-    static constexpr Options::String help =
-        "The Euler Enthalpy constant of the star";
-  };
   struct StarCenter {
     using type = std::array<double, 3>;
     static constexpr Options::String help =
@@ -210,9 +213,11 @@ class TovStar : public elliptic::analytic_data::Background,
     static constexpr Options::String help =
         "The initial angular velocity of the binary orbit";
   };
-  using options = tmpl::list<
-      EulerEnthalpyConstant, hydro::OptionTags::EquationOfState<true, 1>,
-      RelEulerTovStar::Coordinates, StarCenter, OrbitalAngularVelocity>;
+  using options =
+      tmpl::list<BnsInitialData::Tags::OptionTags::EulerEnthalpyConstant,
+                 hydro::OptionTags::InitialDataEquationOfState<true, 1>,
+                 RelEulerTovStar::Coordinates, StarCenter,
+                 OrbitalAngularVelocity>;
   static constexpr Options::String help = {
       "A TovStar to be used as a background"
       "for solving the Irrotational BNS hydro equations"};
@@ -226,21 +231,21 @@ class TovStar : public elliptic::analytic_data::Background,
 
   // We do not a priori know what the central density will be, a (likely poor)
   // guess we use here is that the central enthalpy is equal to the constant
-  // A better approxumation would include some guess for the central lapse and
+  // A better approximation would include some guess for the central lapse and
   // set h = C / alpha
   TovStar(double euler_enthalpy_constant,
           std::unique_ptr<EquationsOfState::EquationOfState<true, 1>>
               equation_of_state,
-          const RelativisticEuler::Solutions::TovCoordinates coordinate_system,
+          RelativisticEuler::Solutions::TovCoordinates coordinate_system,
           std::array<double, 3> star_center, double orbital_angular_velocity)
       : star_center_(std::move(star_center)),
         euler_enthalpy_constant_(euler_enthalpy_constant),
         orbital_angular_velocity_(orbital_angular_velocity) {
     auto central_density =
         get(equation_of_state->rest_mass_density_from_enthalpy(
-            Scalar<double>(euler_enthalpy_constant)));
+            Scalar<double>(euler_enthalpy_constant_)));
     tov_star_ = RelEulerTovStar(central_density, std::move(equation_of_state),
-                                coordinate_system);
+                                std::move(coordinate_system));
     Parallel::printf("TOV star radius is %f",
                      tov_star_.radial_solution().outer_radius());
   }

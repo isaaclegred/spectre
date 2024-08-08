@@ -31,7 +31,21 @@
 #include "Utilities/Math.hpp"
 
 namespace BnsInitialData::InitialData::tov_detail {
+template <typename DataType, StarRegion Region>
+void TovVariables<DataType, Region>::operator()(
+    gsl::not_null<Scalar<DataType>*> rest_mass_density,
+    gsl::not_null<Cache*> /*cache*/,
+    hydro::Tags::RestMassDensity<DataType> /*meta*/) const {
+  *rest_mass_density = get_tov_var(hydro::Tags::RestMassDensity<DataType>{});
+}
 
+template <typename DataType, StarRegion Region>
+void TovVariables<DataType, Region>::operator()(
+    gsl::not_null<Scalar<DataType>*> specific_enthalpy,
+    gsl::not_null<Cache*> /*cache*/,
+    hydro::Tags::SpecificEnthalpy<DataType> /*meta*/) const {
+  *specific_enthalpy = get_tov_var(hydro::Tags::SpecificEnthalpy<DataType>{});
+}
 template <typename DataType, StarRegion Region>
 void TovVariables<DataType, Region>::operator()(
     const gsl::not_null<Scalar<DataType>*> lapse,
@@ -110,11 +124,8 @@ void TovVariables<DataType, Region>::operator()(
   // of the cross product to be a tensor, so we need to multiply by
   // 1/sqrt(gamma)
   tnsr::I<DataType, 3> rotational_killing_vector =
-      hydro::initial_data::spatial_rotational_killing_vector(
-          x,
-          make_with_value<Scalar<DataType>>(sqrt_det_spatial_metric,
-                                            orbital_angular_velocity),
-          sqrt_det_spatial_metric);
+      hydro::initial_data::irrotational_bns::spatial_rotational_killing_vector(
+          x, orbital_angular_velocity, sqrt_det_spatial_metric);
 
   ::tenex::evaluate<ti::I>(rotational_shift,
                            (rotational_killing_vector(ti::I) + shift(ti::I)));
@@ -208,7 +219,7 @@ void TovVariables<DataType, Region>::operator()(
       deriv_log_lapse_over_specific_enthalpy,
       deriv_of_lapse(ti::i) / lapse() *
           (3.0 - 1.0 / 2.0 * specific_enthalpy() /
-                     tov_star.equation_of_state().kappa_from_density(
+                     tov_star.equation_of_state().chi_from_density(
                          rest_mass_density)()));
 }
 
@@ -222,7 +233,8 @@ void TovVariables<DataType, Region>::operator()(
       cache->get_var(*this, BnsInitialData::Tags::RotationalShift<DataType>{});
   const auto& deriv_log_lapse_over_specific_enthalpy = cache->get_var(
       *this,
-      BnsInitialData::Tags::DerivLogLapseOverSpecificEnthalpy<DataType>{});
+      BnsInitialData::Tags::DerivLogLapseTimesDensityOverSpecificEnthalpy<
+          DataType>{});
   const auto& deriv_of_lapse =
       cache->get_var(*this, ::Tags::deriv<gr::Tags::Lapse<DataType>,
                                           tmpl::size_t<3>, Frame::Inertial>{});
@@ -246,8 +258,8 @@ void TovVariables<DataType, Region>::operator()(
   const auto& rotational_shift =
       cache->get_var(*this, BnsInitialData::Tags::RotationalShift<DataType>{});
   const auto& lapse = cache->get_var(*this, gr::Tags::Lapse<DataType>{});
-  hydro::initial_data::rotational_shift_stress(rotational_shift_stress,
-                                               rotational_shift, lapse);
+  hydro::initial_data::irrotational_bns::rotational_shift_stress(
+      rotational_shift_stress, rotational_shift, lapse);
 }
 
 #define DTYPE(data) BOOST_PP_TUPLE_ELEM(0, data)

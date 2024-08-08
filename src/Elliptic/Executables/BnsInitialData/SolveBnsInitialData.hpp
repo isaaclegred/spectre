@@ -32,6 +32,9 @@
 #include "Parallel/Protocols/RegistrationMetavariables.hpp"
 #include "Parallel/Reduction.hpp"
 #include "ParallelAlgorithms/Actions/TerminatePhase.hpp"
+#include "ParallelAlgorithms/Amr/Actions/SendAmrDiagnostics.hpp"
+#include "ParallelAlgorithms/Amr/Criteria/Factory.hpp"
+#include "ParallelAlgorithms/Amr/Protocols/AmrMetavariables.hpp"
 #include "ParallelAlgorithms/Events/Factory.hpp"
 #include "ParallelAlgorithms/Events/Tags.hpp"
 #include "ParallelAlgorithms/EventsAndTriggers/Completion.hpp"
@@ -59,8 +62,7 @@ struct Metavariables {
       "rest-mass density (alternatively fixed "
       "specific enthalpy) profile."};
   static constexpr size_t volume_dim = 3;
-  using system =
-      BnsInitialData::FirstOrderSystem<BnsInitialData::Geometry::FlatCartesian>;
+  using system = BnsInitialData::FirstOrderSystem;
   using solver = elliptic::Solver<Metavariables>;
 
   using solved_fields = typename system::primal_fields;
@@ -81,7 +83,8 @@ struct Metavariables {
 
   // Collect all items to store in the cache.
   using const_global_cache_tags =
-      tmpl::list<domain::Tags::RadiallyCompressedCoordinatesOptions>;
+      tmpl::list<domain::Tags::RadiallyCompressedCoordinatesOptions,
+                 BnsInitialData::Tags::EulerEnthalpyConstant>;
   struct factory_creation
       : tt::ConformsTo<Options::protocols::FactoryCreation> {
     using factory_classes = tmpl::map<
@@ -94,16 +97,28 @@ struct Metavariables {
         tmpl::pair<elliptic::BoundaryConditions::BoundaryCondition<volume_dim>,
                    BnsInitialData::BoundaryConditions::
                        standard_boundary_conditions<system>>,
+        tmpl::pair<
+            ::amr::Criterion,
+            ::amr::Criteria::standard_criteria<
+                volume_dim, tmpl::list<BnsInitialData::Tags::VelocityPotential<
+                                DataVector>>>>,
+        tmpl::pair<Trigger, elliptic::Triggers::all_triggers<
+                                ::amr::OptionTags::AmrGroup>>,
         tmpl::pair<Event,
                    tmpl::flatten<tmpl::list<
                        Events::Completion,
                        dg::Events::field_observations<
                            volume_dim, observe_fields, observer_compute_tags,
                            LinearSolver::multigrid::Tags::IsFinestGrid>>>>,
-        tmpl::pair<Trigger, elliptic::Triggers::all_triggers<
-                                typename solver::linear_solver::options_group>>,
-        tmpl::pair<PhaseChange, tmpl::list<PhaseControl::VisitAndReturn<
-                                    Parallel::Phase::BuildMatrix>>>>;
+        tmpl::pair<
+            PhaseChange,
+            tmpl::list<
+                PhaseControl::VisitAndReturn<Parallel::Phase::BuildMatrix>,
+                // Phases for AMR
+                PhaseControl::VisitAndReturn<
+                    Parallel::Phase::EvaluateAmrCriteria>,
+                PhaseControl::VisitAndReturn<Parallel::Phase::AdjustDomain>,
+                PhaseControl::VisitAndReturn<Parallel::Phase::CheckDomain>>>>;
   };
 
   // Collect all reduction tags for observers
@@ -130,20 +145,28 @@ struct Metavariables {
 
   using dg_element_array = elliptic::DgElementArray<
       Metavariables,
-      tmpl::list<Parallel::PhaseActions<Parallel::Phase::Initialization,
-                                        initialization_actions>,
-                 Parallel::PhaseActions<
-                     Parallel::Phase::Register,
-                     tmpl::push_back<register_actions,
-                                     Parallel::Actions::TerminatePhase>>,
-                 Parallel::PhaseActions<Parallel::Phase::Solve, solve_actions>,
-                 Parallel::PhaseActions<
-                     Parallel::Phase::BuildMatrix,
-                     tmpl::push_back<typename solver::build_matrix_actions,
-                                     Parallel::Actions::TerminatePhase>>>,
+      tmpl::list<
+          Parallel::PhaseActions<Parallel::Phase::Initialization,
+                                 initialization_actions>,
+          Parallel::PhaseActions<
+              Parallel::Phase::Register,
+              tmpl::push_back<register_actions,
+                              Parallel::Actions::TerminatePhase>>,
+          Parallel::PhaseActions<Parallel::Phase::Solve, solve_actions>,
+          Parallel::PhaseActions<Parallel::Phase::CheckDomain,
+                                 tmpl::list<::amr::Actions::SendAmrDiagnostics,
+                                            Parallel::Actions::TerminatePhase>>,
+          Parallel::PhaseActions<
+              Parallel::Phase::BuildMatrix,
+              tmpl::push_back<typename solver::build_matrix_actions,
+                              Parallel::Actions::TerminatePhase>>>,
       LinearSolver::multigrid::ElementsAllocator<
           volume_dim, typename solver::multigrid::options_group>>;
 
+  struct amr : tt::ConformsTo<::amr::protocols::AmrMetavariables> {
+    using element_array = dg_element_array;
+    using projectors = typename solver::amr_projectors;
+  };
   struct registration
       : tt::ConformsTo<Parallel::protocols::RegistrationMetavariables> {
     using element_registrars =
