@@ -1,7 +1,7 @@
 // Distributed under the MIT License.
 // See LICENSE.txt for details.
 
-#include "PointwiseFunctions/AnalyticData/IrrotationalBns/SpecInitialData.hpp"
+#include "PointwiseFunctions/AnalyticData/BnsInitialData/SpecInitialData.hpp"
 
 #include <Exporter.hpp>  // The SpEC Exporter
 #include <memory>
