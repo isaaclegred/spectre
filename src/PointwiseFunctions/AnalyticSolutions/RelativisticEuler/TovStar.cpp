@@ -229,7 +229,12 @@ void TovVariables<DataType, Region>::operator()(
   if constexpr (Region == StarRegion::Exterior) {
     get(*electron_fraction) = 0.45;
   } else {
-    get(*electron_fraction) = 0.1;
+    const auto& rest_mass_density =
+        cache->get_var(*this, hydro::Tags::RestMassDensity<DataType>{});
+    *electron_fraction =
+        eos.equilibrium_electron_fraction_from_density_temperature(
+            rest_mass_density,
+            make_with_value<Scalar<DataType>>(rest_mass_density, 0.0));
   }
 }
 
@@ -283,7 +288,8 @@ void TovVariables<DataType, Region>::operator()(
     if (get(rest_mass_density) == 0.) {
       get(*temperature) = 0.;
     } else {
-      *temperature = eos.temperature_from_density(rest_mass_density);
+      get(*temperature) =
+          .00001;  // eos.temperature_from_density(rest_mass_density);
     }
   }
 }

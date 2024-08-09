@@ -249,9 +249,7 @@ struct EvolutionMetavars<tmpl::list<InterpolationTargetTags...>,
           typename InterpolationTargetTags::vars_to_interpolate_to_target...>>>;
 
   using ordered_list_of_primitive_recovery_schemes = tmpl::list<
-      grmhd::ValenciaDivClean::PrimitiveRecoverySchemes::KastaunEtAl,
-      grmhd::ValenciaDivClean::PrimitiveRecoverySchemes::NewmanHamlin,
-      grmhd::ValenciaDivClean::PrimitiveRecoverySchemes::PalenzuelaEtAl>;
+      grmhd::ValenciaDivClean::PrimitiveRecoverySchemes::KastaunEtAl>;
 
   using interpolation_target_tags = tmpl::list<InterpolationTargetTags...>;
 
@@ -483,8 +481,12 @@ struct EvolutionMetavars<tmpl::list<InterpolationTargetTags...>,
       Actions::MutateApply<grmhd::ValenciaDivClean::subcell::SwapGrTags>,
       Actions::MutateApply<grmhd::ValenciaDivClean::subcell::PrimsAfterRollback<
           ordered_list_of_primitive_recovery_schemes>>,
+      VariableFixing::Actions::FixVariables<
+          VariableFixing::FixToAtmosphere<volume_dim>>,
       Actions::MutateApply<evolution::dg::subcell::fd::CellCenteredFlux<
           system, grmhd::ValenciaDivClean::ComputeFluxes, volume_dim, true>>,
+      VariableFixing::Actions::FixVariables<
+          VariableFixing::FixToAtmosphere<volume_dim>>,
       evolution::dg::subcell::fd::Actions::TakeTimeStep<
           grmhd::ValenciaDivClean::subcell::TimeDerivative>,
       Actions::RecordTimeStepperData<system>,

@@ -92,12 +92,13 @@ RiemannProblem::variables(
     const tnsr::I<DataType, 3>& x,
     tmpl::list<hydro::Tags::ElectronFraction<DataType>> /*meta*/) const {
   auto electron_fraction = make_with_value<Scalar<DataType>>(x, 0.0);
-  if (get_element(get<0>(x), i) <= discontinuity_location_) {
-    get_element(get(electron_fraction), i) = left_electron_fraction_;
+  for (size_t i = 0; i < get_size(get<0>(x)); ++i) {
+    if (get_element(get<0>(x), i) <= discontinuity_location_) {
+      get_element(get(electron_fraction), i) = left_electron_fraction_;
     } else {
       get_element(get(electron_fraction), i) = right_electron_fraction_;
     }
-
+  }
   return electron_fraction;
 }
 

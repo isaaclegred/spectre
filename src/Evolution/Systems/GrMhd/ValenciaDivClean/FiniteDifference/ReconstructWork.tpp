@@ -73,6 +73,9 @@ void compute_conservatives_for_reconstruction(
   // pointers to primitive variables
   const auto& rest_mass_density =
       get<hydro::Tags::RestMassDensity<DataVector>>(*vars_on_face);
+
+  ASSERT(min(rest_mass_density.get()) >= 0.0, "rest mass density is less than zero!");
+
   const auto& electron_fraction =
       get<hydro::Tags::ElectronFraction<DataVector>>(*vars_on_face);
   auto& pressure = get<hydro::Tags::Pressure<DataVector>>(*vars_on_face);
