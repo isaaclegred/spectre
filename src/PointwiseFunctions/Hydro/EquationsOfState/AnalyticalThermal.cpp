@@ -388,10 +388,9 @@ DataType AnalyticalThermal<ColdEos>::a_degeneracy(
     const MassType& mass) const {
   if  (min(rest_mass_density) < 0.0){
     Parallel::printf("about to fail in a_degeneracy \n");
-    Parallel::printf("rest mass density %s",rest_mass_density );
-    Parallel::printf("particle fraction %s",particle_fraction );
-    Parallel::printf("mass  %s", mass);
-
+    Parallel::printf("rest mass density %e ", min(rest_mass_density));
+    Parallel::printf("particle fraction %e ", max(particle_fraction));
+    Parallel::printf("mass  %e \n", max(mass));
   }
   const DataType kinetic_common_factor =
       pow(3 * square(M_PI) * particle_fraction * rest_mass_density, 2.0 / 3.0) *

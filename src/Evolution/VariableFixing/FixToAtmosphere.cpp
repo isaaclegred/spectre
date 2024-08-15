@@ -11,6 +11,7 @@
 #include "Options/ParseError.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
 
+#include "Parallel/Printf/Printf.hpp"
 namespace VariableFixing {
 
 template <size_t Dim>

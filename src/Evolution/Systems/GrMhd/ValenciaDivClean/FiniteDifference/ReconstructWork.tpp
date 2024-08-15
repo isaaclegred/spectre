@@ -32,11 +32,16 @@
 #include "Utilities/ErrorHandling/Assert.hpp"
 #include "Utilities/Gsl.hpp"
 
+#include "Parallel/Printf/Printf.hpp"
+
+
 namespace grmhd::ValenciaDivClean::fd {
 template <typename TagsList, size_t ThermodynamicDim>
 void compute_conservatives_for_reconstruction(
     const gsl::not_null<Variables<TagsList>*> vars_on_face,
-    const EquationsOfState::EquationOfState<true, ThermodynamicDim>& eos) {
+    const EquationsOfState::EquationOfState<true, ThermodynamicDim>& eos,
+    const VariableFixing::FixToAtmosphere<3>& fix_to_atmosphere
+    ) {
   // Computes:
   // 1. W v^i
   // 2. Lorentz factor as sqrt(1 + Wv^i Wv^j\gamma_{ij})
@@ -71,19 +76,36 @@ void compute_conservatives_for_reconstruction(
   }
 
   // pointers to primitive variables
-  const auto& rest_mass_density =
+  auto& rest_mass_density =
       get<hydro::Tags::RestMassDensity<DataVector>>(*vars_on_face);
-
-  ASSERT(min(rest_mass_density.get()) >= 0.0, "rest mass density is less than zero!");
-
-  const auto& electron_fraction =
+  auto& electron_fraction =
       get<hydro::Tags::ElectronFraction<DataVector>>(*vars_on_face);
   auto& pressure = get<hydro::Tags::Pressure<DataVector>>(*vars_on_face);
   auto& specific_internal_energy =
       get<hydro::Tags::SpecificInternalEnergy<DataVector>>(*vars_on_face);
-  const auto& temperature =
+  auto& temperature =
       get<hydro::Tags::Temperature<DataVector>>(*vars_on_face);
-
+  // The variables have to be fixed to atmosphere
+  // before the EoS calls, because the EoSs will generically
+  // fail for bad values of the rest_mass_density, temperature, and
+  // electron_fraction
+  bool troubled = false;
+  if (min(rest_mass_density.get()) < 0.0 ){
+    troubled = true;
+    Parallel::printf("density before fixing in reconstruction is %e ", min(rest_mass_density.get()));
+  }
+  fix_to_atmosphere(make_not_null(&rest_mass_density),
+      make_not_null(&specific_internal_energy),
+      make_not_null(&spatial_velocity),
+      make_not_null(&lorentz_factor),
+      make_not_null(&pressure),
+      make_not_null(&temperature),
+      electron_fraction,
+      spatial_metric,
+      eos);
+  if (troubled){
+    Parallel::printf("density after fixing in reconstruction is %e ", min(rest_mass_density.get()));
+  }
   // EoS calls based on reconstructed primitives
   if constexpr (ThermodynamicDim == 1) {
     specific_internal_energy =
@@ -97,11 +119,15 @@ void compute_conservatives_for_reconstruction(
     pressure = eos.pressure_from_density_and_energy(rest_mass_density,
                                                     specific_internal_energy);
   } else if constexpr (ThermodynamicDim == 3) {
+    if (troubled){
+        Parallel::printf("min density before internal energy call is %e ", min(rest_mass_density.get()));
+    }
+    const Scalar<DataVector> new_rest_mass_density = rest_mass_density;
     specific_internal_energy =
         eos.specific_internal_energy_from_density_and_temperature(
-            rest_mass_density, temperature, electron_fraction);
+            new_rest_mass_density, temperature, electron_fraction);
     pressure = eos.pressure_from_density_and_temperature(
-        rest_mass_density, temperature, electron_fraction);
+        new_rest_mass_density, temperature, electron_fraction);
   } else {
     ERROR("EOS Must be 1, 2, or 3d");
   }
@@ -137,7 +163,8 @@ void reconstruct_prims_work(
     const DirectionalIdMap<3, Variables<PrimsTagsSentByNeighbor>>&
         neighbor_data,
     const Mesh<3>& subcell_mesh, const size_t ghost_zone_size,
-    const bool compute_conservatives) {
+    const bool compute_conservatives,
+    const VariableFixing::FixToAtmosphere<3>& fix_to_atmosphere) {
   ASSERT(Mesh<3>(subcell_mesh.extents(0), subcell_mesh.basis(0),
                  subcell_mesh.quadrature(0)) == subcell_mesh,
          "The subcell mesh should be isotropic but got " << subcell_mesh);
@@ -232,9 +259,9 @@ void reconstruct_prims_work(
 
   for (size_t i = 0; compute_conservatives and i < 3; ++i) {
     compute_conservatives_for_reconstruction(
-        make_not_null(&gsl::at(*vars_on_lower_face, i)), eos);
+        make_not_null(&gsl::at(*vars_on_lower_face, i)), eos, fix_to_atmosphere);
     compute_conservatives_for_reconstruction(
-        make_not_null(&gsl::at(*vars_on_upper_face, i)), eos);
+        make_not_null(&gsl::at(*vars_on_upper_face, i)), eos, fix_to_atmosphere);
   }
 }
 
@@ -248,7 +275,8 @@ void reconstruct_fd_neighbor_work(
     const Element<3>& element,
     const DirectionalIdMap<3, evolution::dg::subcell::GhostData>& ghost_data,
     const Mesh<3>& subcell_mesh, const Direction<3>& direction_to_reconstruct,
-    const size_t ghost_zone_size, const bool compute_conservatives) {
+    const size_t ghost_zone_size, const bool compute_conservatives,
+    const VariableFixing::FixToAtmosphere<3>& fix_to_atmosphere) {
   const DirectionalId<3> mortar_id{
       direction_to_reconstruct,
       *element.neighbors().at(direction_to_reconstruct).begin()};
@@ -318,7 +346,7 @@ void reconstruct_fd_neighbor_work(
       });
 
   if (compute_conservatives) {
-    compute_conservatives_for_reconstruction(vars_on_face, eos);
+    compute_conservatives_for_reconstruction(vars_on_face, eos, fix_to_atmosphere);
   }
 }
 }  // namespace grmhd::ValenciaDivClean::fd

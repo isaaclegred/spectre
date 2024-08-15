@@ -224,9 +224,9 @@ void reconstruct_prims_work(
 
     if (compute_conservatives) {
       ValenciaDivClean::fd::compute_conservatives_for_reconstruction(
-          make_not_null(&gsl::at(*vars_on_lower_face, i)), eos);
+          make_not_null(&gsl::at(*vars_on_lower_face, i)), eos, fix_to_atmosphere);
       ValenciaDivClean::fd::compute_conservatives_for_reconstruction(
-          make_not_null(&gsl::at(*vars_on_upper_face, i)), eos);
+          make_not_null(&gsl::at(*vars_on_upper_face, i)), eos, fix_to_atmosphere);
     }
   }
 }
@@ -364,7 +364,7 @@ void reconstruct_fd_neighbor_work(
   }
   if (compute_conservatives) {
     ValenciaDivClean::fd::compute_conservatives_for_reconstruction(vars_on_face,
-                                                                   eos);
+                                                                   eos, fix_to_atmosphere);
   }
 }
 }  // namespace grmhd::GhValenciaDivClean::fd
