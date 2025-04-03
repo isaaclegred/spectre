@@ -82,7 +82,8 @@ struct InitializeFixedSources : tt::ConformsTo<::amr::protocols::Projector> {
       domain::Tags::Coordinates<Dim, Frame::Inertial>, BackgroundTag,
       elliptic::dg::Tags::Massive, domain::Tags::Mesh<Dim>,
       domain::Tags::DetInvJacobian<Frame::ElementLogical, Frame::Inertial>,
-      domain::Tags::InverseJacobian<3, Frame::ElementLogical, Frame::Inertial>,
+      domain::Tags::InverseJacobian<Dim, Frame::ElementLogical,
+                                    Frame::Inertial>,
       Parallel::Tags::Metavariables>;
 
   template <typename Background, typename Metavariables, typename... AmrData>
@@ -91,7 +92,7 @@ struct InitializeFixedSources : tt::ConformsTo<::amr::protocols::Projector> {
       const tnsr::I<DataVector, Dim>& inertial_coords,
       const Background& background, const bool massive, const Mesh<Dim>& mesh,
       const Scalar<DataVector>& det_inv_jacobian,
-      const InverseJacobian<DataVector, 3, Frame::ElementLogical,
+      const InverseJacobian<DataVector, Dim, Frame::ElementLogical,
                             Frame::Inertial>& inv_jacobian,
       const Metavariables& /*meta*/, const AmrData&... /*amr_data*/) {
     // Retrieve the fixed-sources of the elliptic system from the background,
