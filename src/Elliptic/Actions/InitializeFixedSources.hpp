@@ -103,14 +103,16 @@ struct InitializeFixedSources : tt::ConformsTo<::amr::protocols::Projector> {
     *fixed_sources =
         call_with_dynamic_type<Variables<typename fixed_sources_tag::tags_list>,
                                tmpl::at<factory_classes, Background>>(
-            &background, [&inertial_coords, &mesh,
-                          &inv_jacobian](const auto* const derived) {
+            &background, [&inertial_coords,  mesh,
+                          inv_jacobian](const auto* const derived) {
               // Classes with background fields take the mesh and inverse
               // Jacobian to be able to compute numerical derivatives
               if constexpr (std::is_same_v<typename System::background_fields,
                                            tmpl::list<>>) {
                 // Classes without `background_fields` do  not compute numerical
                 // derivatives
+                (void)mesh;
+                (void)inv_jacobian;
                 return variables_from_tagged_tuple(derived->variables(
                     inertial_coords, typename fixed_sources_tag::tags_list{}));
               } else {
