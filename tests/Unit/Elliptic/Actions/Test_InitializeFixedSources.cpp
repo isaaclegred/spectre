@@ -93,6 +93,7 @@ struct ElementArray {
 struct Metavariables {
   using system = System;
   using component_list = tmpl::list<ElementArray<Metavariables>>;
+  using background_fields = tmpl::list<>;
   using const_global_cache_tags = tmpl::list<
       elliptic::Tags::Background<elliptic::analytic_data::Background>>;
   struct factory_creation
