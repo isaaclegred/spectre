@@ -45,6 +45,7 @@ struct ScalarFieldTag : db::SimpleTag {
 struct System {
   static constexpr size_t volume_dim = 1;
   using primal_fields = tmpl::list<ScalarFieldTag>;
+  using background_fields = tmpl::list<>;
 };
 
 struct Background : elliptic::analytic_data::Background {
@@ -93,7 +94,6 @@ struct ElementArray {
 struct Metavariables {
   using system = System;
   using component_list = tmpl::list<ElementArray<Metavariables>>;
-  using background_fields = tmpl::list<>;
   using const_global_cache_tags = tmpl::list<
       elliptic::Tags::Background<elliptic::analytic_data::Background>>;
   struct factory_creation
