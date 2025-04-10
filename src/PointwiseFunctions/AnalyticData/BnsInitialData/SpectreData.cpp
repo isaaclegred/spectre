@@ -1,7 +1,7 @@
 // Distributed under the MIT License.
 // See LICENSE.txt for details.
 
-#include "PointwiseFunctions/AnalyticData/BnsInitialData/SpecData.hpp"
+#include "PointwiseFunctions/AnalyticData/BnsInitialData/SpectreData.hpp"
 
 #include <Exporter.hpp>  // The SpEC Exporter
 #include <memory>
@@ -43,85 +43,73 @@ using background_tags = tmpl::list<
     BnsInitialData::Tags::RotationalShiftStress<DataType>>;
 
 template <size_t ThermodynamicDim>
-SpecData<ThermodynamicDim>::SpecData(
-    std::string data_directory,
+SpectreData<ThermodynamicDim>::SpectreData(
+    std::string volume_file_glob,
     std::unique_ptr<equation_of_state_type> equation_of_state,
     const double density_cutoff, const double orbital_angular_velocity,
     const double euler_enthalpy_constant)
-    : data_directory_(std::move(data_directory)),
+    : volume_file_glob_(std::move(volume_file_glob)),
       equation_of_state_(std::move(equation_of_state)),
       density_cutoff_(density_cutoff),
       orbital_angular_velocity_(orbital_angular_velocity),
-      euler_enthalpy_constant_(euler_enthalpy_constant),
-      spec_exporter_(std::make_unique<spec::Exporter>(
-          sys::procs_on_node(sys::my_node()), data_directory_,
-          vars_to_interpolate_)) {}
+      euler_enthalpy_constant_(euler_enthalpy_constant) {};
 
 template <size_t ThermodynamicDim>
-SpecData<ThermodynamicDim>& SpecData<ThermodynamicDim>::operator=(
-    const SpecData& rhs) {
-  data_directory_ = rhs.data_directory_;
+SpectreData<ThermodynamicDim>& SpectreData<ThermodynamicDim>::operator=(
+    const SpectreData& rhs) {
+  volume_file_glob_ = rhs.volume_file_glob_;
   equation_of_state_ = rhs.equation_of_state_->get_clone();
   density_cutoff_ = rhs.density_cutoff_;
   orbital_angular_velocity_ = rhs.orbital_angular_velocity_;
   euler_enthalpy_constant_ = rhs.euler_enthalpy_constant_;
-  spec_exporter_ =
-      std::make_unique<spec::Exporter>(sys::procs_on_node(sys::my_node()),
-                                       data_directory_, vars_to_interpolate_);
 
   return *this;
 }
 
 template <size_t ThermodynamicDim>
-SpecData<ThermodynamicDim>::SpecData(const SpecData& rhs) {
+SpectreData<ThermodynamicDim>::SpectreData(const SpectreData& rhs) {
   *this = rhs;
 }
 
 template <size_t ThermodynamicDim>
 std::unique_ptr<elliptic::analytic_data::Background>
-SpecData<ThermodynamicDim>::get_clone() const {
-  return std::make_unique<SpecData>(*this);
+SpectreData<ThermodynamicDim>::get_clone() const {
+  return std::make_unique<SpectreData>(*this);
 }
 
 template <size_t ThermodynamicDim>
-SpecData<ThermodynamicDim>::SpecData(CkMigrateMessage* msg)
+SpectreData<ThermodynamicDim>::SpectreData(CkMigrateMessage* msg)
     : elliptic::analytic_data::Background(msg) {}
 
 template <size_t ThermodynamicDim>
-void SpecData<ThermodynamicDim>::pup(PUP::er& p) {
-  p | data_directory_;
+void SpectreData<ThermodynamicDim>::pup(PUP::er& p) {
+  p | volume_file_glob_;
   p | equation_of_state_;
   p | density_cutoff_;
   p | orbital_angular_velocity_;
   p | euler_enthalpy_constant_;
-  if (p.isUnpacking()) {
-    spec_exporter_ =
-        std::make_unique<spec::Exporter>(sys::procs_on_node(sys::my_node()),
-                                         data_directory_, vars_to_interpolate_);
-  }
 }
 
 template <size_t ThermodynamicDim>
-PUP::able::PUP_ID SpecData<ThermodynamicDim>::my_PUP_ID = 0;
+PUP::able::PUP_ID SpectreData<ThermodynamicDim>::my_PUP_ID = 0;
 
 template <size_t ThermodynamicDim>
 template <typename DataType>
 tuples::tagged_tuple_from_typelist<
-    typename SpecData<ThermodynamicDim>::template interpolated_tags<DataType>>
-SpecData<ThermodynamicDim>::interpolate_from_spec(
+    typename SpectreData<ThermodynamicDim>::template interpolated_tags<DataType>>
+SpectreData<ThermodynamicDim>::interpolate_from_spectre(
     const tnsr::I<DataType, 3>& x) const {
-  return io::interpolate_from_spec<interpolated_tags<DataType>>(
-      make_not_null(spec_exporter_.get()), x,
-      static_cast<size_t>(sys::my_local_rank()));
-}
+        return spectre::Exporter::interpolate_to_points<interpolated_tags>(
+            volume_file_glob_,  subfile_name_, observation_step_, x, false, static_cast<size_t>(sys::my_local_rank()));
+      }
 
 // Deriv of velocity potential is only
 // used for validation
 template <size_t ThermodynamicDim>
 template <typename DataType>
-tnsr::i<DataType, 3> SpecData<ThermodynamicDim>::deriv_of_velocity_potential(
+tnsr::i<DataType, 3> SpectreData<ThermodynamicDim>::deriv_of_velocity_potential(
     const tnsr::I<DataType, 3, Frame::Inertial>& x) const {
-  const auto interpolated_vars = interpolate_from_spec(x);
+  const auto interpolated_vars = interpolate_from_spectre(x);
   const auto& lower_spatial_four_velocity =
       get<hydro::Tags::LowerSpatialFourVelocity<DataType, 3>>(
           interpolated_vars);
@@ -149,7 +137,7 @@ tnsr::i<DataType, 3> SpecData<ThermodynamicDim>::deriv_of_velocity_potential(
 template <size_t ThermodynamicDim>
 template <typename DataType>
 tuples::TaggedTuple<Tags::VelocityPotential<DataType>>
-SpecData<ThermodynamicDim>::variables(
+SpectreData<ThermodynamicDim>::variables(
     const tnsr::I<DataType, 3, Frame::Inertial>& x,
     tmpl::list<Tags::VelocityPotential<DataType>> /*meta*/) const {
   // return velocity potential (only a guess)
@@ -165,7 +153,7 @@ SpecData<ThermodynamicDim>::variables(
 template <size_t ThermodynamicDim>
 template <typename DataType>
 tuples::TaggedTuple<::Tags::FixedSource<Tags::VelocityPotential<DataType>>>
-SpecData<ThermodynamicDim>::variables(
+SpectreData<ThermodynamicDim>::variables(
     const tnsr::I<DataType, 3, Frame::Inertial>& x, const Mesh<3>& mesh,
     const InverseJacobian<DataType, 3, Frame::ElementLogical, Frame::Inertial>&
         inv_jacobian,
@@ -216,11 +204,11 @@ SpecData<ThermodynamicDim>::variables(
 template <size_t ThermodynamicDim>
 template <typename DataType>
 tuples::TaggedTuple<gr::Tags::InverseSpatialMetric<DataType, 3>>
-SpecData<ThermodynamicDim>::variables(
+SpectreData<ThermodynamicDim>::variables(
     const tnsr::I<DataType, 3, Frame::Inertial>& x,
     tmpl::list<gr::Tags::InverseSpatialMetric<DataType, 3>> /*meta*/) const {
   // interpolate from spec, then set gamma
-  const auto interpolated_vars = interpolate_from_spec(x);
+  const auto interpolated_vars = interpolate_from_spectre(x);
 
   const auto& spatial_metric =
       get<gr::Tags::SpatialMetric<DataType, 3>>(interpolated_vars);
@@ -232,7 +220,7 @@ SpecData<ThermodynamicDim>::variables(
 template <size_t ThermodynamicDim>
 template <typename DataType>
 tuples::tagged_tuple_from_typelist<background_tags<DataType>>
-SpecData<ThermodynamicDim>::variables(
+SpectreData<ThermodynamicDim>::variables(
     const tnsr::I<DataType, 3, Frame::Inertial>& x, const Mesh<3>& mesh,
     const InverseJacobian<DataType, 3, Frame::ElementLogical, Frame::Inertial>&
         inv_jacobian,
@@ -240,7 +228,7 @@ SpecData<ThermodynamicDim>::variables(
   // interpolate from spec, take num derivatives, return
   // Shift, lapse spatial metric imported
   auto result = tuples::tagged_tuple_from_typelist<background_tags<DataType>>{};
-  const auto interpolated_vars = interpolate_from_spec(x);
+  const auto interpolated_vars = interpolate_from_spectre(x);
   const auto& spatial_metric =
       get<gr::Tags::SpatialMetric<DataType, 3>>(interpolated_vars);
   const auto spatial_metric_determinant_and_inverse =
@@ -319,21 +307,21 @@ SpecData<ThermodynamicDim>::variables(
 #define THERMODIM(data) BOOST_PP_TUPLE_ELEM(0, data)
 
 #define INSTANTIATION(r, data)                                                \
-  template class SpecData<THERMODIM(data)>;                                   \
+  template class SpectreData<THERMODIM(data)>;                                   \
   template tuples::tagged_tuple_from_typelist<                                \
-      typename SpecData<THERMODIM(data)>::template interpolated_tags<double>> \
-  SpecData<THERMODIM(data)>::interpolate_from_spec(                           \
+      typename SpectreData<THERMODIM(data)>::template interpolated_tags<double>> \
+  SpectreData<THERMODIM(data)>::interpolate_from_spectre(                           \
       const tnsr::I<double, 3>& x) const;                                     \
-  template tuples::tagged_tuple_from_typelist<typename SpecData<THERMODIM(    \
+  template tuples::tagged_tuple_from_typelist<typename SpectreData<THERMODIM(    \
       data)>::template interpolated_tags<DataVector>>                         \
-  SpecData<THERMODIM(data)>::interpolate_from_spec(                           \
+  SpectreData<THERMODIM(data)>::interpolate_from_spectre(                           \
       const tnsr::I<DataVector, 3>& x) const;                                 \
   template tnsr::i<DataVector, 3>                                             \
-  SpecData<THERMODIM(data)>::deriv_of_velocity_potential(                     \
+  SpectreData<THERMODIM(data)>::deriv_of_velocity_potential(                     \
       const tnsr::I<DataVector, 3, Frame::Inertial>& x) const;                \
   template tuples::TaggedTuple<                                               \
       ::Tags::FixedSource<Tags::VelocityPotential<DataVector>>>               \
-  SpecData<THERMODIM(data)>::variables(                                       \
+  SpectreData<THERMODIM(data)>::variables(                                       \
       const tnsr::I<DataVector, 3, Frame::Inertial>& x, const Mesh<3>& mesh,  \
       const InverseJacobian<DataVector, 3, Frame::ElementLogical,             \
                             Frame::Inertial>& inv_jacobian,                   \
@@ -341,17 +329,17 @@ SpecData<ThermodynamicDim>::variables(
           ::Tags::FixedSource<Tags::VelocityPotential<DataVector>>> /*meta*/) \
       const;                                                                  \
   template tuples::TaggedTuple<gr::Tags::InverseSpatialMetric<DataVector, 3>> \
-  SpecData<THERMODIM(data)>::variables(                                       \
+  SpectreData<THERMODIM(data)>::variables(                                       \
       const tnsr::I<DataVector, 3, Frame::Inertial>& x,                       \
       tmpl::list<gr::Tags::InverseSpatialMetric<DataVector, 3>> /*meta*/)     \
       const;                                                                  \
   template tuples::TaggedTuple<Tags::VelocityPotential<DataVector>>           \
-  SpecData<THERMODIM(data)>::variables(                                       \
+  SpectreData<THERMODIM(data)>::variables(                                       \
       const tnsr::I<DataVector, 3, Frame::Inertial>& x,                       \
       tmpl::list<Tags::VelocityPotential<DataVector>> /*meta*/) const;        \
   template tuples::tagged_tuple_from_typelist<                                \
-      SpecData<THERMODIM(data)>::background_tags<DataVector>>                 \
-  SpecData<THERMODIM(data)>::variables(                                       \
+      SpectreData<THERMODIM(data)>::background_tags<DataVector>>                 \
+  SpectreData<THERMODIM(data)>::variables(                                       \
       const tnsr::I<DataVector, 3, Frame::Inertial>& x, const Mesh<3>& mesh,  \
       const InverseJacobian<DataVector, 3, Frame::ElementLogical,             \
                             Frame::Inertial>& inv_jacobian,                   \

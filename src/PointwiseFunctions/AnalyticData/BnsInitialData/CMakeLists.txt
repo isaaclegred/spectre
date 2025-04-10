@@ -2,13 +2,7 @@
 # See LICENSE.txt for details.
 set(LIBRARY BnsInitialDataAnalyticData)
 
-if (TARGET SpEC::Exporter)
-  add_spectre_library(${LIBRARY})
-else()
-  add_spectre_library(${LIBRARY}
-    INTERFACE)
-endif()
-
+add_spectre_library(${LIBRARY})
 
  if (TARGET SpEC::Exporter)
     target_link_libraries(
@@ -16,6 +10,7 @@ endif()
       PUBLIC
       DataStructures
       ErrorHandling
+      Exporter
       GeneralRelativity
       Options
       Utilities
@@ -24,12 +19,14 @@ endif()
      ${LIBRARY}
      PRIVATE
      SpecData.cpp
+     SpectreData.cpp
      )
    spectre_target_headers(
      ${LIBRARY}
      INCLUDE_DIRECTORY ${CMAKE_SOURCE_DIR}/src
      HEADERS
      SpecData.hpp
+     SpectreData.hpp
      )
    target_link_libraries(
      ${LIBRARY}
@@ -38,11 +35,23 @@ endif()
      SpEC::Exporter
      )
 else()
+    spectre_target_sources(
+      ${LIBRARY}
+      PRIVATE
+      SpectreData.cpp
+      )
+    spectre_target_headers(
+      ${LIBRARY}
+      INCLUDE_DIRECTORY ${CMAKE_SOURCE_DIR}/src
+      HEADERS
+      SpectreData.hpp
+      )
     target_link_libraries(
       ${LIBRARY}
-      INTERFACE
+      PUBLIC
       DataStructures
       ErrorHandling
+      Exporter
       GeneralRelativity
       GeneralRelativityAnalyticData
       Options

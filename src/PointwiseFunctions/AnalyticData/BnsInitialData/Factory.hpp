@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "PointwiseFunctions/AnalyticData/BnsInitialData/SpectreData.hpp"
 #include "Utilities/NoSuchType.hpp"
 #include "Utilities/TMPL.hpp"
 
@@ -18,6 +19,6 @@ using SpecDataList = NoSuchType;
 namespace BnsInitialData::AnalyticData {
 
 using all_analytic_data =
-    tmpl::conditional_t<std::is_same_v<SpecDataList, NoSuchType>, tmpl::list<>,
-                        SpecDataList>;
+    tmpl::conditional_t<std::is_same_v<SpecDataList, NoSuchType>, tmpl::list<SpectreData<1>>,
+                        tmpl::append<tmpl::list<SpectreData<1>>, SpecDataList>>;
 }  // namespace BnsInitialData::AnalyticData
