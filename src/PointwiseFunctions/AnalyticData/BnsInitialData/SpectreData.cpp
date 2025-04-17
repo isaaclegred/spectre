@@ -44,7 +44,8 @@ using background_tags = tmpl::list<
 
 template <size_t ThermodynamicDim>
 SpectreData<ThermodynamicDim>::SpectreData(
-    std::string volume_file_glob,
+    std::string volume_file_glob, std::string subfile_name,
+    int observation_step,
     std::unique_ptr<equation_of_state_type> equation_of_state,
     const double density_cutoff, const double orbital_angular_velocity,
     const double euler_enthalpy_constant)
@@ -58,11 +59,13 @@ template <size_t ThermodynamicDim>
 SpectreData<ThermodynamicDim>& SpectreData<ThermodynamicDim>::operator=(
     const SpectreData& rhs) {
   volume_file_glob_ = rhs.volume_file_glob_;
+  subfile_name_ = rhs.subfile_name_;
+  observation_step_ = rhs.observation_step_;
   equation_of_state_ = rhs.equation_of_state_->get_clone();
   density_cutoff_ = rhs.density_cutoff_;
   orbital_angular_velocity_ = rhs.orbital_angular_velocity_;
   euler_enthalpy_constant_ = rhs.euler_enthalpy_constant_;
-
+  
   return *this;
 }
 
@@ -84,6 +87,8 @@ SpectreData<ThermodynamicDim>::SpectreData(CkMigrateMessage* msg)
 template <size_t ThermodynamicDim>
 void SpectreData<ThermodynamicDim>::pup(PUP::er& p) {
   p | volume_file_glob_;
+  p | subfile_name_;
+  p | observation_step_;
   p | equation_of_state_;
   p | density_cutoff_;
   p | orbital_angular_velocity_;

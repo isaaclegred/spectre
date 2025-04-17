@@ -79,7 +79,7 @@ class SpectreData : public elliptic::analytic_data::Background,
   template <typename DataType>
   using tags = tmpl::append<background_tags<DataType>, variable_tags<DataType>>;
 
-  struct VolumefileGlob {
+  struct VolumeFileGlob {
     using type = std::string;
     static constexpr Options::String help = {
         "Path to a directory of data produced by SpEC. The directory is "
@@ -91,12 +91,12 @@ class SpectreData : public elliptic::analytic_data::Background,
     static constexpr Options::String help =
         "Name of the subfile to read from. If not provided, the first subfile "
         "found will be used.";
-  }
+  };
   struct ObservationStep{
-    using type = spectre::Exporter::ObservationStep;
+    using type = int;
     static constexpr Options::String help =
         "The observation step to use for interpolation.";
-  }
+  };
 
   struct DensityCutoff {
     using type = double;
@@ -112,7 +112,7 @@ class SpectreData : public elliptic::analytic_data::Background,
   };
 
   using options = tmpl::list<
-      DataDirectory,
+      VolumeFileGlob, SubfileName, ObservationStep,
       ::hydro::OptionTags::InitialDataEquationOfState<true, ThermodynamicDim>,
       DensityCutoff, OrbitalAngularVelocity,
       ::BnsInitialData::Tags::OptionTags::EulerEnthalpyConstant>;
@@ -127,7 +127,8 @@ class SpectreData : public elliptic::analytic_data::Background,
   SpectreData& operator=(SpectreData&& /*rhs*/) = default;
   ~SpectreData() override = default;
 
-  SpectreData(std::string data_directory,
+  SpectreData(std::string volume_file_glob, std::string subfile_name, 
+            int observation_step,
            std::unique_ptr<equation_of_state_type> equation_of_state,
            double density_cutoff, double orbital_angular_velocity,
            double euler_enthalpy_constant);
@@ -194,7 +195,7 @@ class SpectreData : public elliptic::analytic_data::Background,
   interpolate_from_spectre(const tnsr::I<DataType, 3>& x) const;
 
   std::string volume_file_glob_{};
-  std::string subfile_name{};
+  std::string subfile_name_{};
 
   std::unique_ptr<equation_of_state_type> equation_of_state_{nullptr};
   double density_cutoff_ = std::numeric_limits<double>::signaling_NaN();
@@ -202,7 +203,7 @@ class SpectreData : public elliptic::analytic_data::Background,
       std::numeric_limits<double>::signaling_NaN();
   double euler_enthalpy_constant_ =
       std::numeric_limits<double>::signaling_NaN();
-  spectre::Exporter::ObservationStep observation_step_ = 0;
+  int observation_step_ = -1;
 
 
 };
