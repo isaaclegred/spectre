@@ -17,8 +17,12 @@
 #include "Options/Options.hpp"
 #include "Options/ParseOptions.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/Xcts/CommonVariables.tpp"
+#include "PointwiseFunctions/GeneralRelativity/SpacetimeNormalOneForm.hpp"
+#include "PointwiseFunctions/GeneralRelativity/SpacetimeNormalVector.hpp"
+#include "PointwiseFunctions/GeneralRelativity/SpatialMetric.hpp"
 #include "PointwiseFunctions/GeneralRelativity/Tags.hpp"
 #include "PointwiseFunctions/GeneralRelativity/Tags/Conformal.hpp"
+#include "PointwiseFunctions/SpecialRelativity/LorentzBoostMatrix.hpp"
 #include "Utilities/ConstantExpressions.hpp"
 #include "Utilities/ErrorHandling/Error.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
@@ -290,10 +294,24 @@ void TovVariables<DataType>::operator()(
     const gsl::not_null<Cache*> /* cache */,
     gr::Tags::Conformal<gr::Tags::EnergyDensity<DataType>,
                         ConformalMatterScale> /*meta*/) const {
-  *energy_density = get_tov_var(hydro::Tags::RestMassDensity<DataType>{});
-  get(*energy_density) *=
-      get(get_tov_var(hydro::Tags::SpecificEnthalpy<DataType>{}));
-  get(*energy_density) -= get(get_tov_var(hydro::Tags::Pressure<DataType>{}));
+  if (boost_velocity.has_value()) {
+    const auto stress_energy = stress_energy_tensor();
+    const auto spacetime_normal_one_form =
+        gr::spacetime_normal_one_form<DataType, 3, Frame::Inertial>(
+            get_tov_var(gr::Tags::Lapse<DataType>{}));
+    const auto spacetime_normal_vector = gr::spacetime_normal_vector(
+        get_tov_var(gr::Tags::Lapse<DataType>{}),
+        get_tov_var(gr::Tags::Shift<DataType, 3>{}));
+    // Baumgarte-Shapiro, Box 2.1
+    tenex::evaluate<>(energy_density, stress_energy(ti::A, ti::b) *
+                                          spacetime_normal_one_form(ti::a) *
+                                          spacetime_normal_vector(ti::B));
+  } else {
+    *energy_density = get_tov_var(hydro::Tags::RestMassDensity<DataType>{});
+    get(*energy_density) *=
+        get(get_tov_var(hydro::Tags::SpecificEnthalpy<DataType>{}));
+    get(*energy_density) -= get(get_tov_var(hydro::Tags::Pressure<DataType>{}));
+  }
 }
 
 template <typename DataType>
@@ -302,16 +320,90 @@ void TovVariables<DataType>::operator()(
     const gsl::not_null<Cache*> /* cache */,
     gr::Tags::Conformal<gr::Tags::StressTrace<DataType>,
                         ConformalMatterScale> /*meta*/) const {
-  get(*stress_trace) = 3. * get(get_tov_var(hydro::Tags::Pressure<DataType>{}));
+  if (boost_velocity.has_value()) {
+    const auto stress_energy = stress_energy_tensor();
+
+    const auto spacetime_normal_vector = gr::spacetime_normal_vector(
+        get_tov_var(gr::Tags::Lapse<DataType>{}),
+        get_tov_var(gr::Tags::Shift<DataType, 3>{}));
+
+    // Baumgarte-Shapiro, Box 2.1
+    const auto spacetime_normal_one_form =
+        gr::spacetime_normal_one_form<DataType, 3, Frame::Inertial>(
+            get_tov_var(gr::Tags::Lapse<DataType>{}));
+    // The projection of the lower index in the stress energy tensor is
+    // trivial, but the projection of the upper index produces the second term
+    tenex::evaluate<>(stress_trace, stress_energy(ti::I, ti::i) +
+                                        spacetime_normal_one_form(ti::a) *
+                                            spacetime_normal_vector(ti::I) *
+                                            stress_energy(ti::A, ti::i));
+  } else {
+    get(*stress_trace) =
+        3. * get(get_tov_var(hydro::Tags::Pressure<DataType>{}));
+  }
 }
 
 template <typename DataType>
 void TovVariables<DataType>::operator()(
     const gsl::not_null<tnsr::I<DataType, 3>*> momentum_density,
-    const gsl::not_null<Cache*> /* cache */,
+    const gsl::not_null<Cache*> cache,
     gr::Tags::Conformal<gr::Tags::MomentumDensity<DataType, 3>,
                         ConformalMatterScale> /*meta*/) const {
-  std::fill(momentum_density->begin(), momentum_density->end(), 0.);
+  if (boost_velocity.has_value()) {
+    const auto stress_energy = stress_energy_tensor();
+    const auto spacetime_normal_vector = gr::spacetime_normal_vector(
+        get_tov_var(gr::Tags::Lapse<DataType>{}),
+        get_tov_var(gr::Tags::Shift<DataType, 3>{}));
+    // Baumgarte-Shapiro, Box 2.1
+    // S^i = gamma^i_a n^b T^a_b
+    // Store the energy density in the momentum density
+    const auto& energy_density = cache->get_var(
+        *this, gr::Tags::Conformal<gr::Tags::EnergyDensity<DataType>,
+                                   ConformalMatterScale>{});
+    // Two contributions come from the two parts of the projection
+    // tensor gamma^i_a = delta^i_a + n^i n_a
+    tenex::evaluate<ti::I>(
+        momentum_density,
+        energy_density() * spacetime_normal_vector(ti::I) +
+            spacetime_normal_vector(ti::B) * stress_energy(ti::I, ti::b));
+  } else {
+    std::fill(momentum_density->begin(), momentum_density->end(), 0.);
+  }
+}
+
+template <typename DataType>
+tnsr::Ab<DataType, 3> TovVariables<DataType>::stress_energy_tensor() const {
+  auto result = make_with_value<tnsr::Ab<DataType, 3>>(x, 0.0);
+  // Evaluated in the fluid rest frame
+  auto energy_density =
+      get(get_tov_var(hydro::Tags::RestMassDensity<DataType>{}));
+  energy_density *= get(get_tov_var(hydro::Tags::SpecificEnthalpy<DataType>{}));
+  energy_density -= get(get_tov_var(hydro::Tags::Pressure<DataType>{}));
+  const auto pressure = get(get_tov_var(hydro::Tags::Pressure<DataType>{}));
+  result.get(0, 0) = -energy_density;
+  result.get(1, 1) = pressure;
+  result.get(2, 2) = pressure;
+  result.get(3, 3) = pressure;
+  if (boost_velocity.has_value()) {
+    const auto scalar_boost_matrix =
+        sr::lorentz_boost_matrix(boost_velocity.value());
+    auto boost_matrix = make_with_value<tnsr::Ab<DataType, 3>>(x, 0.0);
+    for (size_t i = 0; i < 3; ++i) {
+      for (size_t j = 0; j < 3; ++j) {
+        boost_matrix.get(i, j) = scalar_boost_matrix.get(i, j);
+      }
+    }
+
+    const auto& boost_matrix_inverse =
+        determinant_and_inverse(boost_matrix).second;
+    tenex::update<ti::A, ti::d>(make_not_null(&result),
+                                boost_matrix_inverse(ti::A, ti::b) *
+                                    result(ti::B, ti::c) *
+                                    boost_matrix(ti::C, ti::d));
+    return result;
+  } else {
+    return result;
+  }
 }
 
 #define DTYPE(data) BOOST_PP_TUPLE_ELEM(0, data)

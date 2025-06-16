@@ -4,6 +4,7 @@
 #pragma once
 
 #include <limits>
+#include <optional>
 #include <ostream>
 
 #include "DataStructures/CachedTempBuffer.hpp"
@@ -12,6 +13,7 @@
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Elliptic/Systems/Xcts/Tags.hpp"
 #include "NumericalAlgorithms/LinearOperators/PartialDerivatives.hpp"
+#include "Options/Auto.hpp"
 #include "Options/String.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/RelativisticEuler/TovStar.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/Xcts/CommonVariables.hpp"
@@ -53,6 +55,7 @@ struct TovVariables : CommonVariables<DataType, TovVariablesCache<DataType>> {
   const tnsr::I<DataType, 3>& x;
   const DataType& radius;
   const RelativisticEuler::Solutions::TovStar& tov_star;
+  const std::optional<std::array<double, 3>>& boost_velocity;
 
   TovVariables(
       std::optional<std::reference_wrapper<const Mesh<Dim>>> local_mesh,
@@ -60,11 +63,13 @@ struct TovVariables : CommonVariables<DataType, TovVariablesCache<DataType>> {
           DataType, Dim, Frame::ElementLogical, Frame::Inertial>>>
           local_inv_jacobian,
       const tnsr::I<DataType, 3>& local_x, const DataType& local_radius,
-      const RelativisticEuler::Solutions::TovStar& local_tov_star)
+      const RelativisticEuler::Solutions::TovStar& local_tov_star,
+      const std::optional<std::array<double, 3>>& local_boost_velocity)
       : Base(std::move(local_mesh), std::move(local_inv_jacobian)),
         x(local_x),
         radius(local_radius),
-        tov_star(local_tov_star) {}
+        tov_star(local_tov_star),
+        boost_velocity(local_boost_velocity) {}
 
   void operator()(gsl::not_null<tnsr::ii<DataType, 3>*> conformal_metric,
                   gsl::not_null<Cache*> cache,
@@ -161,6 +166,7 @@ struct TovVariables : CommonVariables<DataType, TovVariablesCache<DataType>> {
                   gsl::not_null<Cache*> cache,
                   gr::Tags::Conformal<gr::Tags::MomentumDensity<DataType, 3>,
                                       ConformalMatterScale> /*meta*/) const;
+  tnsr::Ab<DataType, 3> stress_energy_tensor() const;
 
  private:
   template <typename Tag>
@@ -185,7 +191,13 @@ class TovStar : public elliptic::analytic_data::AnalyticSolution {
   using RelEulerTovStar = RelativisticEuler::Solutions::TovStar;
 
  public:
-  using options = RelEulerTovStar::options;
+  struct BoostVelocity {
+    using type = Options::Auto<std::array<double, 3>>;
+    static constexpr Options::String help{
+        "Boost velocity in the x, y, z directions."};
+  };
+  using options =
+      tmpl::append<RelEulerTovStar::options, tmpl::list<BoostVelocity>>;
   static constexpr Options::String help = RelEulerTovStar::help;
 
   TovStar() = default;
@@ -198,9 +210,13 @@ class TovStar : public elliptic::analytic_data::AnalyticSolution {
   TovStar(double central_rest_mass_density,
           std::unique_ptr<EquationsOfState::EquationOfState<true, 1>>
               equation_of_state,
-          const RelativisticEuler::Solutions::TovCoordinates coordinate_system)
+          const RelativisticEuler::Solutions::TovCoordinates coordinate_system,
+          std::optional<std::array<double, 3>> boost_velocity)
       : tov_star(central_rest_mass_density, std::move(equation_of_state),
-                 coordinate_system) {}
+                 coordinate_system) {
+    // Set the boost velocity
+    boost_velocity_ = boost_velocity;
+  }
 
   const EquationsOfState::EquationOfState<true, 1>& equation_of_state() const {
     return tov_star.equation_of_state();
@@ -249,6 +265,11 @@ class TovStar : public elliptic::analytic_data::AnalyticSolution {
   }
 
  private:
+  std::optional<std::array<double, 3>> boost_velocity_{std::nullopt};
+  template <typename DataType>
+  tnsr::Ab<DataType, 3> stress_energy_tensor(
+      const tnsr::I<DataType, 3, Frame::Inertial>& x) const;
+
   template <typename DataType, typename... RequestedTags>
   tuples::TaggedTuple<RequestedTags...> variables_impl(
       const tnsr::I<DataType, 3, Frame::Inertial>& x,
@@ -260,8 +281,9 @@ class TovStar : public elliptic::analytic_data::AnalyticSolution {
     using VarsComputer = tov_detail::TovVariables<DataType>;
     typename VarsComputer::Cache cache{get_size(*x.begin())};
     const DataType radius = get(magnitude(x));
-    const VarsComputer computer{std::move(mesh), std::move(inv_jacobian), x,
-                                radius, tov_star};
+    const VarsComputer computer{
+        std::move(mesh), std::move(inv_jacobian), x, radius,
+        tov_star,        boost_velocity_};
     using unrequested_hydro_tags =
         tmpl::list_difference<hydro_tags<DataType>,
                               tmpl::list<RequestedTags...>>;

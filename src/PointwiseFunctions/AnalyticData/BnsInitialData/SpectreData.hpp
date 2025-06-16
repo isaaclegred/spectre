@@ -58,26 +58,25 @@ class SpectreData : public elliptic::analytic_data::Background,
   using equation_of_state_type =
       EquationsOfState::EquationOfState<true, ThermodynamicDim>;
 
-  template <typename DataType>
   using variable_tags =
-      tmpl::list<::BnsInitialData::Tags::VelocityPotential<DataType>>;
-  template <typename DataType>
+      tmpl::list<::BnsInitialData::Tags::VelocityPotential<DataVector>>;
+
   using background_tags = tmpl::list<
       hydro::Tags::RestMassDensity<DataVector>,
-      gr::Tags::InverseSpatialMetric<DataType, 3>,
-      gr::Tags::SpatialChristoffelSecondKindContracted<DataType, 3>,
-      gr::Tags::Lapse<DataType>,
-      ::Tags::deriv<gr::Tags::Lapse<DataType>,
+      gr::Tags::InverseSpatialMetric<DataVector, 3>,
+      gr::Tags::SpatialChristoffelSecondKindContracted<DataVector, 3>,
+      gr::Tags::Lapse<DataVector>,
+      ::Tags::deriv<gr::Tags::Lapse<DataVector>,
                     tmpl::integral_constant<size_t, 3>, Frame::Inertial>,
-      gr::Tags::Shift<DataType, 3>,
-      ::Tags::deriv<gr::Tags::Shift<DataType, 3>,
+      gr::Tags::Shift<DataVector, 3>,
+      ::Tags::deriv<gr::Tags::Shift<DataVector, 3>,
                     tmpl::integral_constant<size_t, 3>, Frame::Inertial>,
-      BnsInitialData::Tags::RotationalShift<DataType>,
+      BnsInitialData::Tags::RotationalShift<DataVector>,
       BnsInitialData::Tags::DerivLogLapseTimesDensityOverSpecificEnthalpy<
-          DataType>,
-      BnsInitialData::Tags::RotationalShiftStress<DataType>>;
-  template <typename DataType>
-  using tags = tmpl::append<background_tags<DataType>, variable_tags<DataType>>;
+          DataVector>,
+      BnsInitialData::Tags::RotationalShiftStress<DataVector>>;
+
+  using tags = tmpl::append<background_tags, variable_tags>;
 
   struct VolumeFileGlob {
     using type = std::string;
@@ -146,53 +145,50 @@ class SpectreData : public elliptic::analytic_data::Background,
   }
   // Deriv of velocity potential is only
   // used for validation
-  template <typename DataType>
-  tnsr::i<DataType, 3> deriv_of_velocity_potential(
-      const tnsr::I<DataType, 3, Frame::Inertial>& x) const;
+
+  tnsr::i<DataVector, 3> deriv_of_velocity_potential(
+      const tnsr::I<DataVector, 3, Frame::Inertial>& x) const;
 
   // The velocity potential is used in the initial guess
-  template <typename DataType>
-  tuples::TaggedTuple<Tags::VelocityPotential<DataType>> variables(
-      const tnsr::I<DataType, 3, Frame::Inertial>& x,
-      tmpl::list<Tags::VelocityPotential<DataType>> /*meta*/) const;
+
+  tuples::TaggedTuple<Tags::VelocityPotential<DataVector>> variables(
+      const tnsr::I<DataVector, 3, Frame::Inertial>& x,
+      tmpl::list<Tags::VelocityPotential<DataVector>> /*meta*/) const;
   // The fixed sources are used in initialization
-  template <typename DataType>
-  tuples::TaggedTuple<::Tags::FixedSource<Tags::VelocityPotential<DataType>>>
-  variables(const tnsr::I<DataType, 3, Frame::Inertial>& x, const Mesh<3>& mesh,
-            const InverseJacobian<DataType, 3, Frame::ElementLogical,
+
+  tuples::TaggedTuple<::Tags::FixedSource<Tags::VelocityPotential<DataVector>>>
+  variables(const tnsr::I<DataVector, 3, Frame::Inertial>& x,
+            const Mesh<3>& mesh,
+            const InverseJacobian<DataVector, 3, Frame::ElementLogical,
                                   Frame::Inertial>& inv_jacobian,
             tmpl::list<::Tags::FixedSource<
-                Tags::VelocityPotential<DataType>>> /*meta*/) const;
-  template <typename DataType>
-  tuples::TaggedTuple<gr::Tags::InverseSpatialMetric<DataType, 3>> variables(
-      const tnsr::I<DataType, 3, Frame::Inertial>& x,
-      tmpl::list<gr::Tags::InverseSpatialMetric<DataType, 3>> /*meta*/) const;
-  template <typename DataType>
-  tuples::tagged_tuple_from_typelist<background_tags<DataType>> variables(
-      const tnsr::I<DataType, 3, Frame::Inertial>& x, const Mesh<3>& mesh,
-      const InverseJacobian<DataType, 3, Frame::ElementLogical,
+                Tags::VelocityPotential<DataVector>>> /*meta*/) const;
+
+  tuples::TaggedTuple<gr::Tags::InverseSpatialMetric<DataVector, 3>> variables(
+      const tnsr::I<DataVector, 3, Frame::Inertial>& x,
+      tmpl::list<gr::Tags::InverseSpatialMetric<DataVector, 3>> /*meta*/) const;
+
+  tuples::tagged_tuple_from_typelist<background_tags> variables(
+      const tnsr::I<DataVector, 3, Frame::Inertial>& x, const Mesh<3>& mesh,
+      const InverseJacobian<DataVector, 3, Frame::ElementLogical,
                             Frame::Inertial>& inv_jacobian,
-      background_tags<DataType> /*meta*/) const;
+      background_tags /*meta*/) const;
 
   // NOLINTNEXTLINE(google-runtime-references)
   void pup(PUP::er& /*p*/) override;
 
  private:
   /// These quantities are supported for interpolation from SpEC
-  template <typename DataType>
   using interpolated_tags = tmpl::list<
       // GR quantities
-      gr::Tags::SpatialMetric<DataType, 3>,
-      gr::Tags::Lapse<DataType>,
-      gr::Tags::Shift<DataType, 3>,
+      gr::Tags::SpatialMetric<DataVector, 3>, gr::Tags::Lapse<DataVector>,
+      gr::Tags::Shift<DataVector, 3>,
       // Hydro quantities
-      hydro::Tags::RestMassDensity<DataType>,
-      hydro::Tags::LowerSpatialFourVelocity<DataType, 3>>;
+      hydro::Tags::RestMassDensity<DataVector>,
+      hydro::Tags::LowerSpatialFourVelocity<DataVector, 3>>;
 
-
-  template <typename DataType>
-  tuples::tagged_tuple_from_typelist<interpolated_tags<DataType>>
-  interpolate_from_spectre(const tnsr::I<DataType, 3>& x) const;
+  tuples::tagged_tuple_from_typelist<interpolated_tags>
+  interpolate_from_spectre(const tnsr::I<DataVector, 3>& x) const;
 
   std::string volume_file_glob_{};
   std::string subfile_name_{};
