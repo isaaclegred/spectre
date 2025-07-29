@@ -65,7 +65,7 @@ struct Metavariables {
       "specific enthalpy) profile."};
   static constexpr size_t volume_dim = 3;
   using system = BnsInitialData::FirstOrderSystem;
-  using solver = elliptic::Solver<Metavariables>;
+  using solver = elliptic::Solver<Metavariables, volume_dim, system>;
 
   using solved_fields = typename system::primal_fields;
   using deriv_fields = tmpl::list<::Tags::DerivTensorCompute<

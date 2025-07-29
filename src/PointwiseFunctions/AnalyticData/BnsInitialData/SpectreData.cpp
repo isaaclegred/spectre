@@ -13,7 +13,7 @@
 #include "DataStructures/Tensor/EagerMath/DotProduct.hpp"
 #include "DataStructures/Tensor/EagerMath/RaiseOrLowerIndex.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
-#include "IO/External/InterpolateFromSpec.hpp"
+#include "IO/Exporter/PointwiseInterpolator.hpp"
 #include "PointwiseFunctions/GeneralRelativity/Tags.hpp"
 #include "PointwiseFunctions/Hydro/SpecificEnthalpy.hpp"
 #include "PointwiseFunctions/Hydro/Tags.hpp"
@@ -50,7 +50,6 @@ SpectreData<ThermodynamicDim>& SpectreData<ThermodynamicDim>::operator=(
   density_cutoff_ = rhs.density_cutoff_;
   orbital_angular_velocity_ = rhs.orbital_angular_velocity_;
   euler_enthalpy_constant_ = rhs.euler_enthalpy_constant_;
-  
   return *this;
 }
 
@@ -268,10 +267,6 @@ SpectreData<ThermodynamicDim>::variables(
       get<hydro::Tags::RestMassDensity<DataVector>>(interpolated_vars);
   get(rest_mass_density) += 1.0e-16;
   get<hydro::Tags::RestMassDensity<DataVector>>(result) = rest_mass_density;
-  // The SpEC solution should have e.g. B&S Eq. 15.76 satisfied; however,
-  // we do not assume it is satisfied.  We take the SpEC density
-  // (equivalently enthalpy) profile to be fixed and compute the
-  // velocity potential from the matter and spacetime profiles.
   const DataVector enthalpy_density = select(
       step_function(get(rest_mass_density) - 0.0),
       get(equation_of_state_->pressure_from_density(rest_mass_density)) +
